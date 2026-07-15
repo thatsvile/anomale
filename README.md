@@ -22,9 +22,9 @@ If you are not comfortable living in a terminal and editing config files, this s
 
 ```bash
 sudo pacman -S --needed git base-devel
-git clone https://github.com/thatsjor/anomale-shell.git
-chmod +x anomale-shell/anomale/install.sh
-bash anomale-shell/anomale/install.sh
+git clone https://github.com/thatsvile/anomale.git
+chmod +x anomale/anomale/install.sh
+bash anomale/anomale/install.sh
 ```
 
 The script will ask for sudo early and keep it alive for the rest of the run. It also asks whether you have an NVIDIA GPU so the Mango session autostart script gets the right environment variables. When it finishes, reboot.
