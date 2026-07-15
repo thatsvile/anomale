@@ -1,41 +1,65 @@
-# ANOMALE SHELL
+# Anomale Shell
+
 [![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=IXHZVE5SDYE)
 
-THIS PROJECT IS A PERSONAL PROJECT WITH SOFTWARE AND DOTFILES MADE FOR MYSELF. IT IS NOT INTENDED FOR PUBLIC USE, ALTHOUGH YOU ARE WELCOME TO USE IT IF YOU WISH.
+Personal Arch Linux dotfiles and a small Wayland graphical shell, built around [MangoWM](https://github.com/DreamMaoMao/mangowm) and pywal. This is software I maintain for my own machines. You can use it if you want, but it is not a general-purpose desktop and it is not written with support in mind.
 
-Expanding on the philosophy that mangowm offers, anomale shell does **not** include a suite of widgets and apps that create a complete desktop environment. Instead, it provides a minimal, lightweight, and functional interface that provides basic information and wallpaper chooser with pywal theming for your minimalistic desktop. New features will be added in the future, but the project will always maintain that minimalistic philosophy that stays out of the user's way and encourages the use of the terminal rather than a complicated GUI. Users that are not comfortable working in their terminal will likely not enjoy these dots.
+## What this is
 
-While the Anomale Shell source code is included in this repo inside of the shell/ directory, the install script is the primary way to install the shell, as it handles the building of the binary, installation of any pre-requisites, and the copying of configuration files that turn a tedious setup experience into a simple 10-minute process.
+Anomale Shell is a thin interface on top of MangoWM: a bar, an app launcher, a power menu, notifications, and a wallpaper picker that drives pywal theming. It does not try to replace a full desktop environment. There is no pile of applet widgets or heavily customized GUI apps. The point is to stay out of the way and keep you in the terminal as much as possible.
 
-This Graphical Shell and the included dotfiles are meant to be installed over a minimal Arch Linux (Arch, CachyOS, EndeavourOS) installation with no DE or display manager. (The script may work if used under different conditions, but no promises. It requires yay or paru, or it will install yay for you.)
+The Rust sources for the shell live under `anomale/thestuff/shell/`. Day to day you are not meant to build that by hand. The install script takes a minimal Arch install (no DE, no display manager), bootstraps yay, pulls dependencies, builds Anomale, drops in the configs, sets up SDDM with the included theme, and wires the boot splash so it survives package upgrades.
 
+If you are not comfortable living in a terminal and editing config files, this setup will probably annoy you. That is intentional.
+
+## Requirements
+
+- Fresh Arch Linux install (Arch, CachyOS, or EndeavourOS base-style installs are the intended target)
+- Working network and a usable `pacman` mirrorlist
+- No existing desktop environment or display manager required; the installer enables SDDM
 
 ## Installation
 
-To install the shell, run the following commands:
-
-**STEP 1:**
-
 ```bash
 sudo pacman -S --needed git base-devel
-```
-
-**STEP 2:**
-
-```bash
 git clone https://github.com/thatsjor/anomale-shell.git
-```
-
-**STEP 3:**
-
-```bash
 chmod +x anomale-shell/anomale/install.sh
-```
-
-**STEP 4:**
-
-```bash
 bash anomale-shell/anomale/install.sh
 ```
 
-The setup will require sudo permissions. Pay attention throughout the process as you'll be needed for various prompts and confirmations. You will be given the options at the end to add Nvidia environment variables to your autostart script and install/configure SDDM before you reboot.
+The script will ask for sudo early and keep it alive for the rest of the run. It also asks whether you have an NVIDIA GPU so the Mango session autostart script gets the right environment variables. When it finishes, reboot.
+
+## Essential keybinds
+
+These come from `~/.config/mango/config.conf` after install. Super is the Windows/Command key.
+
+| Binding | Action |
+| --- | --- |
+| `Super` + `Tab` | Open a terminal (`foot`) |
+| `Super` + `q` | Close the focused window |
+| `Alt` + `Space` | App launcher |
+| `Super` + `Space` | Power menu (shutdown / reboot / logout) |
+| `Super` + `Shift` + `l` | Wallpaper picker (updates pywal theme) |
+
+A few more that are useful right away:
+
+| Binding | Action |
+| --- | --- |
+| `Alt` + arrow keys | Move focus between tiled windows |
+| `Super` + `Left` / `Right` | Switch tags |
+| `Alt` + `f` | Toggle fullscreen |
+| `Super` + `a` | Toggle floating |
+| `Alt` + `Tab` | Overview |
+
+The full bind list lives in the mango config. Change it there if you want different muscle memory.
+
+## After install
+
+- Session entry is SDDM with the included Anomalous theme.
+- Default terminal is `foot`; shell is `fish`.
+- Wallpapers land in `~/Pictures/wallpaper/`. Changing wallpaper through Anomale refreshes pywal colors across terminal, GTK, and the SDDM theme background.
+- Anomale and Mango configs live under `~/.config/anomale/` and `~/.config/mango/`.
+
+## Notes
+
+This repo will keep changing as I adjust my own setup. Expect breakage if you track it blindly. Issues and patches from other people may sit unanswered for a long time, or forever.
