@@ -2,7 +2,7 @@
 
 [![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=IXHZVE5SDYE)
 
-Personal Arch Linux dotfiles and a small Wayland graphical shell, built around [MangoWM](https://github.com/DreamMaoMao/mangowm) and pywal. This is software I maintain for my own machines. You can use it if you want, but it is not a general-purpose desktop and it is not written with support in mind.
+Personal Arch Linux dotfiles and a small Wayland graphical shell, built around [MangoWM](https://mangowm.github.io) and pywal. This is software I maintain for my own machines. You can use it if you want, but it is not a general-purpose desktop and it is not written with support in mind.
 
 ## What this is
 
