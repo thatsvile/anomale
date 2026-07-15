@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Type = Package
+Target = librewolf-bin
+Target = librewolf
+
+[Action]
+Description = Merging Anomale LibreWolf Pywalfox policy
+When = PostTransaction
+Exec = /usr/local/lib/anomale/librewolf-pywalfox-policy.sh

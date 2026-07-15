@@ -278,7 +278,7 @@ done
 chmod +x "$HOME/.local/bin/"*
 clear
 
-echo "Configuring SDDM, theme, and boot splash..."
+echo "Configuring SDDM, theme, boot splash, and LibreWolf policies..."
 sudo bash -c "
 set -euo pipefail
 systemctl enable sddm
@@ -292,6 +292,13 @@ if [[ -f \"$THE_STUFF/splash-arch.bmp\" ]]; then
     install -m 755 \"$THE_STUFF/usr/local/lib/anomale/restore-splash.sh\" /usr/local/lib/anomale/restore-splash.sh
     install -m 644 \"$THE_STUFF/etc/pacman.d/hooks/anomale-splash.hook\" /etc/pacman.d/hooks/anomale-splash.hook
     /usr/local/lib/anomale/restore-splash.sh --force-rebuild
+fi
+if [[ -f \"$THE_STUFF/etc/librewolf/policies.json\" ]]; then
+    install -d /usr/local/share/anomale /usr/local/lib/anomale /etc/pacman.d/hooks
+    install -m 644 \"$THE_STUFF/etc/librewolf/policies.json\" /usr/local/share/anomale/librewolf-policies.json
+    install -m 755 \"$THE_STUFF/usr/local/lib/anomale/librewolf-pywalfox-policy.sh\" /usr/local/lib/anomale/librewolf-pywalfox-policy.sh
+    install -m 644 \"$THE_STUFF/etc/pacman.d/hooks/anomale-librewolf-policy.hook\" /etc/pacman.d/hooks/anomale-librewolf-policy.hook
+    /usr/local/lib/anomale/librewolf-pywalfox-policy.sh
 fi
 "
 

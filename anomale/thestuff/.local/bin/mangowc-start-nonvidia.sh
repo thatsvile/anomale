@@ -22,4 +22,14 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 anomale &
 
 systemctl --user start mangowm-session.target
-dbus-update-activation-environment --systemd --all  
+dbus-update-activation-environment --systemd --all
+
+# When LibreWolf first opens, push pywal colors without a manual "Fetch" click.
+(
+    for _ in $(seq 1 24); do
+        sleep 10
+        if pgrep -x librewolf >/dev/null 2>&1; then
+            pywalfox update >/dev/null 2>&1 && break
+        fi
+    done
+) &
