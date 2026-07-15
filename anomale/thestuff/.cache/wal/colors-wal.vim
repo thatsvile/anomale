@@ -1,0 +1,23 @@
+" Special
+let wallpaper  = "__ANOMALE_HOME__/Pictures/wallpaper/wallpaper_2.png"
+let background = "#20200e"
+let foreground = "#c7c7c2"
+let cursor     = "#c7c7c2"
+
+" Colors
+let color0  = "#20200e"
+let color1  = "#a5a87c"
+let color2  = "#a4a98a"
+let color3  = "#a5a996"
+let color4  = "#a5a9a0"
+let color5  = "#a7a9a8"
+let color6  = "#a2a2aa"
+let color7  = "#c7c7c2"
+let color8  = "#72725d"
+let color9  = "#a5a87c"
+let color10 = "#a4a98a"
+let color11 = "#a5a996"
+let color12 = "#a5a9a0"
+let color13 = "#a7a9a8"
+let color14 = "#a2a2aa"
+let color15 = "#c7c7c2"

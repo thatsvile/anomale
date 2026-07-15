@@ -1,0 +1,17 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Type = Package
+Target = systemd
+Target = mkinitcpio
+Target = linux
+Target = linux-lts
+Target = linux-zen
+Target = linux-hardened
+Target = linux-cachyos
+Target = linux-cachyos-*
+
+[Action]
+Description = Restoring Anomale boot splash for mkinitcpio
+When = PostTransaction
+Exec = /usr/local/lib/anomale/restore-splash.sh --force-rebuild

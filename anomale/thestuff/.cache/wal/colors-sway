@@ -1,0 +1,21 @@
+set $wallpaper __ANOMALE_HOME__/Pictures/wallpaper/wallpaper_2.png
+
+set $background #20200e
+set $foreground #c7c7c2
+
+set $color0 #20200e
+set $color1 #a5a87c
+set $color2 #a4a98a
+set $color3 #a5a996
+set $color4 #a5a9a0
+set $color5 #a7a9a8
+set $color6 #a2a2aa
+set $color7 #c7c7c2
+set $color8 #72725d
+set $color9 #a5a87c
+set $color10 #a4a98a
+set $color11 #a5a996
+set $color12 #a5a9a0
+set $color13 #a7a9a8
+set $color14 #a2a2aa
+set $color15 #c7c7c2
