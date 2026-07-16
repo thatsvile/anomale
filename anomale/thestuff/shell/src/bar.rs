@@ -217,7 +217,7 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
     };
 
     format!(
-        "{19} {{
+        "{18} {{
             --bar-bg: {0};
             --font-family: '{1}';
             --font-color: {2};
@@ -248,21 +248,17 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
             border-color: var(--border-color);
         }}
 
-        {19} label:not(.dot) {{
+        {18} label {{
             margin-top: {17}px;
             line-height: 1;
-        }}
-
-        {19} .dot {{
-            margin-top: {18}px;
         }}
 
         {9}
         {10}
         {11}
+        {19}
         {20}
-        {21}
-        {22}",
+        {21}",
         bar_color,                                          // 0
         config.font_family,                                 // 1
         config.font_color,                                  // 2
@@ -281,10 +277,9 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
         border_left,                                        // 15
         border_color,                                       // 16
         config.font_vert_align,                             // 17
-        config.bullet_vert_align,                           // 18
-        bar_class,                                          // 19
-        include_str!("modules/resources/style.css"),         // 20
-        include_str!("modules/battery/style.css"),           // 21
-        shadow_wrapper_css,                                  // 22
+        bar_class,                                          // 18
+        include_str!("modules/resources/style.css"),         // 19
+        include_str!("modules/battery/style.css"),           // 20
+        shadow_wrapper_css,                                  // 21
     )
 }

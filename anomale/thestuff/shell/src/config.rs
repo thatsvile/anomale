@@ -29,7 +29,6 @@ pub struct Config {
     pub exec: Vec<String>,
     pub exec_once: Vec<String>,
     pub font_vert_align: i32,
-    pub bullet_vert_align: i32,
     pub volume_scroll_speed: f64,
     pub degree_symbol_font: Option<String>,
     pub charge_color: String,
@@ -68,7 +67,6 @@ impl Default for Config {
             exec: vec![],
             exec_once: vec![],
             font_vert_align: 2,
-            bullet_vert_align: 0,
             volume_scroll_speed: 5.0,
             degree_symbol_font: None,
             charge_color: "#00ff00ff".to_string(),
@@ -373,11 +371,6 @@ impl Config {
         if let Some(val) = properties.get("font_vert_align") {
             if let Ok(v) = val.parse() {
                 self.font_vert_align = v;
-            }
-        }
-        if let Some(val) = properties.get("bullet_vert_align") {
-            if let Ok(v) = val.parse() {
-                self.bullet_vert_align = v;
             }
         }
         if let Some(val) = properties.get("volume_scroll_speed") {

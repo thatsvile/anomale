@@ -271,11 +271,14 @@ pub fn build(monitor: &gtk4::gdk::Monitor) -> Box {
         button.add_css_class("tag");
         button.set_visible(false);
 
-        // Inner layout: Dot + Number
+        // Inner layout: solid CSS circle + Number.
+        // A unicode bullet leaves Nvidia Wayland 1px AA crumbs on toggle;
+        // a filled box does not go through the text rasterizer.
         let bbox = Box::new(Orientation::Horizontal, 2); // spacing 2px
-        let dot = Label::new(Some("●"));
+        let dot = Box::new(Orientation::Horizontal, 0);
         dot.add_css_class("dot");
         dot.set_valign(Align::Center);
+        dot.set_halign(Align::Center);
 
         let num = Label::new(Some(&i.to_string()));
         num.add_css_class("num");
@@ -334,6 +337,7 @@ pub fn build(monitor: &gtk4::gdk::Monitor) -> Box {
     });
 
     // Handle updates in main thread
+    let container_draw = container.clone();
     gtk4::glib::MainContext::default().spawn_local(async move {
         while let Ok((id, state)) = receiver.recv().await {
             if let Ok(buttons) = buttons.lock() {
@@ -363,6 +367,8 @@ pub fn build(monitor: &gtk4::gdk::Monitor) -> Box {
                     }
                 }
             }
+            // Force a full tags redraw so Nvidia damage tracking clears old pixels.
+            container_draw.queue_draw();
         }
     });
     // Trigger initial state

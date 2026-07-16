@@ -8,8 +8,6 @@
     padding: 0 4px;
     background-color: transparent;
     color: var(--font-color);
-    border-radius: 100%;
-
 }
 
 /* Remove side padding for edge tags to align with layout margin */
@@ -21,17 +19,19 @@
     padding-right: 0;
 }
 
+/* Solid circle — not a text glyph (avoids Nvidia AA residue). */
 .tag .dot {
-    opacity: 0;
+    min-width: 0.45em;
+    min-height: 0.45em;
+    border-radius: 50%;
+    background-color: transparent;
 }
 
-
 .tag.selected .dot {
-    opacity: 1;
+    background-color: var(--font-color);
 }
 
 .tag.selected {
-    background-color: rgba(255, 255, 255, 0);
     font-weight: bold;
 }
 
@@ -42,4 +42,8 @@
 .tag.urgent {
     background-color: #ff0000;
     color: #ffffff;
+}
+
+.tag.urgent.selected .dot {
+    background-color: #ffffff;
 }
