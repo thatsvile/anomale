@@ -51,6 +51,10 @@ struct Args {
     /// Toggle Wallpaper Selector
     #[arg(long)]
     wallpapers: bool,
+
+    /// Enable, disable, or toggle notification popups (on|off|toggle)
+    #[arg(long, value_name = "STATE")]
+    notif: Option<String>,
 }
 
 fn run_command(cmd: &str) {
@@ -176,6 +180,18 @@ fn toggle_action_menu(
     }
 }
 
+fn apply_notif_state(manager: &Rc<notify::NotifyManager>, state: &str) {
+    match state.to_ascii_lowercase().as_str() {
+        "on" | "true" | "1" | "enable" | "enabled" => manager.set_enabled(true),
+        "off" | "false" | "0" | "disable" | "disabled" => manager.set_enabled(false),
+        "toggle" => manager.toggle_enabled(),
+        other => eprintln!(
+            "Unknown --notif state '{}'. Use on, off, or toggle.",
+            other
+        ),
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     setup_panic_hook();
@@ -203,6 +219,9 @@ async fn main() -> anyhow::Result<()> {
     let wallpaper_menu_store: Rc<RefCell<Option<Rc<RefCell<wallpapers::WallpaperMenu>>>>> = Rc::new(RefCell::new(None));
     let should_show_wallpapers_store = Rc::new(RefCell::new(false));
 
+    let notify_manager_store: Rc<RefCell<Option<Rc<notify::NotifyManager>>>> = Rc::new(RefCell::new(None));
+    let pending_notif_store: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
+
     let bars_clone_activate = bars.clone();
     let is_initialized_clone_activate = is_initialized.clone();
     let app_launcher_store_activate = app_launcher_store.clone();
@@ -212,6 +231,8 @@ async fn main() -> anyhow::Result<()> {
     let wallpaper_menu_store_activate = wallpaper_menu_store.clone();
     let should_show_wallpapers_store_activate = should_show_wallpapers_store.clone();
     let menu_css_provider_store_activate = menu_css_provider_store.clone();
+    let notify_manager_store_activate = notify_manager_store.clone();
+    let pending_notif_store_activate = pending_notif_store.clone();
 
     app.connect_activate(move |app| {
         if *is_initialized_clone_activate.borrow() {
@@ -363,6 +384,11 @@ async fn main() -> anyhow::Result<()> {
         let (gtk_to_dbus_tx, gtk_to_dbus_rx) = async_channel::unbounded();
         
         let notify_manager = notify::NotifyManager::new(app, gtk_to_dbus_tx);
+        *notify_manager_store_activate.borrow_mut() = Some(notify_manager.clone());
+
+        if let Some(state) = pending_notif_store_activate.borrow_mut().take() {
+            apply_notif_state(&notify_manager, &state);
+        }
 
         let server = notify_server::NotificationServer {
             events_tx: dbus_to_gtk_tx,
@@ -432,6 +458,8 @@ async fn main() -> anyhow::Result<()> {
     let wallpaper_menu_store_cmd = wallpaper_menu_store.clone();
     let should_show_wallpapers_store_cmd = should_show_wallpapers_store.clone();
     let menu_css_provider_store_cmd = menu_css_provider_store.clone();
+    let notify_manager_store_cmd = notify_manager_store.clone();
+    let pending_notif_store_cmd = pending_notif_store.clone();
     app.connect_command_line(move |app, cmdline| {
         let args = cmdline.arguments();
         // Parse arguments directly from OsString
@@ -484,6 +512,14 @@ async fn main() -> anyhow::Result<()> {
                      } else {
                          println!("DEBUG: Wallpaper menu not initialized yet, marking for launch");
                          *should_show_wallpapers_store_cmd.borrow_mut() = true;
+                     }
+                } else if let Some(state) = parsed.notif {
+                     println!("DEBUG: Notification state requested: {}", state);
+                     if let Some(manager) = notify_manager_store_cmd.borrow().as_ref() {
+                         apply_notif_state(manager, &state);
+                     } else {
+                         println!("DEBUG: Notify manager not initialized yet, deferring");
+                         *pending_notif_store_cmd.borrow_mut() = Some(state);
                      }
                 }
             }

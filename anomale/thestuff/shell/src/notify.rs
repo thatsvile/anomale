@@ -13,6 +13,8 @@ pub struct NotifyManager {
     config: RefCell<NotifyConfig>,
     id_counter: std::sync::atomic::AtomicU32,
     events_tx: Sender<NotifyEvent>,
+    /// When false, D-Bus Notify still succeeds but popups are not shown.
+    enabled: RefCell<bool>,
 }
 
 impl NotifyManager {
@@ -25,7 +27,64 @@ impl NotifyManager {
             config: RefCell::new(config),
             id_counter: std::sync::atomic::AtomicU32::new(1),
             events_tx,
+            enabled: RefCell::new(true),
         })
+    }
+
+    /// Enable or disable popup display without restarting. Turning off dismisses
+    /// any currently visible notifications.
+    pub fn set_enabled(self: &Rc<Self>, enabled: bool) {
+        let was_enabled = *self.enabled.borrow();
+        *self.enabled.borrow_mut() = enabled;
+        if was_enabled && !enabled {
+            self.dismiss_all();
+        }
+        println!(
+            "Notifications {}",
+            if enabled { "enabled" } else { "disabled" }
+        );
+    }
+
+    pub fn toggle_enabled(self: &Rc<Self>) {
+        let next = !*self.enabled.borrow();
+        self.set_enabled(next);
+    }
+
+    fn dismiss_all(self: &Rc<Self>) {
+        let ids: Vec<u32> = self
+            .active_notifications
+            .borrow()
+            .iter()
+            .map(|n| n.id)
+            .collect();
+        for id in ids {
+            self.dismiss_notification(id);
+        }
+    }
+
+    fn resolve_monitor(&self, config: &NotifyConfig) -> Option<gtk4::gdk::Monitor> {
+        let display = gtk4::gdk::Display::default()?;
+        let monitors = display.monitors();
+
+        if let Some(name) = config.monitor.as_ref() {
+            for i in 0..monitors.n_items() {
+                if let Some(monitor) = monitors.item(i).and_downcast::<gtk4::gdk::Monitor>() {
+                    if monitor.connector().as_deref() == Some(name.as_str()) {
+                        return Some(monitor);
+                    }
+                }
+            }
+            eprintln!(
+                "Warning: notification monitor '{}' not found; falling back to primary",
+                name
+            );
+        }
+
+        if monitors.n_items() > 0 {
+            monitors.item(0).and_downcast::<gtk4::gdk::Monitor>()
+        } else {
+            None
+        }
     }
 
     pub fn handle_event(self: &Rc<Self>, event: NotifyEvent) {
@@ -46,6 +105,13 @@ impl NotifyManager {
                     self.id_counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
                 };
 
+                // Still acknowledge the notification so clients don't hang,
+                // but skip the popup while muted (e.g. streaming).
+                if !*self.enabled.borrow() {
+                    let _ = id_sender.send(id);
+                    return;
+                }
+
                 // Filter out if ID already exists (replacement logic)
                 self.remove_notification(id);
 
@@ -59,14 +125,7 @@ impl NotifyManager {
                     }
                 }
 
-                // Get primary monitor
-                let display = gtk4::gdk::Display::default().expect("No display");
-                let monitors = display.monitors();
-                let monitor = if monitors.n_items() > 0 {
-                    monitors.item(0).and_downcast::<gtk4::gdk::Monitor>()
-                } else {
-                    None
-                };
+                let monitor = self.resolve_monitor(&config);
 
                 let notify_win = NotificationWindow::new(
                     &self.app,

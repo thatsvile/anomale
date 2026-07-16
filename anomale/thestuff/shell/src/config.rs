@@ -969,6 +969,9 @@ pub struct NotifyConfig {
     pub spacing: i32,
     pub corner: String,
     pub timeout: i32,
+    /// Optional output connector name (e.g. "DP-1", "HDMI-A-1").
+    /// When set, notifications target that monitor instead of the default primary.
+    pub monitor: Option<String>,
     pub pywal: bool,
     pub background_color: String,
     pub background_opacity: f64,
@@ -989,6 +992,7 @@ impl Default for NotifyConfig {
             spacing: 10,
             corner: "bottom-right".to_string(),
             timeout: 2,
+            monitor: None,
             pywal: false,
             background_color: "#1e1e2eff".to_string(),
             background_opacity: 0.9,
@@ -1087,6 +1091,12 @@ impl NotifyConfig {
         if let Some(val) = properties.get("timeout") {
             if let Ok(v) = val.parse() {
                 self.timeout = v;
+            }
+        }
+        if let Some(val) = properties.get("monitor") {
+            let name = val.trim();
+            if !name.is_empty() {
+                self.monitor = Some(name.to_string());
             }
         }
         if let Some(val) = properties.get("background_color") {
