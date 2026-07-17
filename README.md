@@ -1,4 +1,4 @@
-# Anomale Shell
+# Anomale Shell + Dots
 
 [![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=IXHZVE5SDYE)
 
