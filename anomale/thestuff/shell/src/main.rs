@@ -13,6 +13,7 @@ mod wallpapers;
 mod notify;
 mod notify_server;
 mod notification_window;
+mod tray;
 
 use config::Config;
 use std::rc::Rc;
@@ -43,6 +44,10 @@ struct Args {
     /// Toggle Power Menu
     #[arg(long)]
     power: bool,
+
+    /// Toggle System Tray
+    #[arg(long)]
+    tray: bool,
 
     /// Toggle a named action menu defined in menus.conf
     #[arg(long, value_name = "NAME")]
@@ -219,6 +224,10 @@ async fn main() -> anyhow::Result<()> {
     let wallpaper_menu_store: Rc<RefCell<Option<Rc<RefCell<wallpapers::WallpaperMenu>>>>> = Rc::new(RefCell::new(None));
     let should_show_wallpapers_store = Rc::new(RefCell::new(false));
 
+    let tray_menu_store: Rc<RefCell<Option<Rc<RefCell<tray::TrayMenu>>>>> =
+        Rc::new(RefCell::new(None));
+    let should_show_tray_store = Rc::new(RefCell::new(false));
+
     let notify_manager_store: Rc<RefCell<Option<Rc<notify::NotifyManager>>>> = Rc::new(RefCell::new(None));
     let pending_notif_store: Rc<RefCell<Option<String>>> = Rc::new(RefCell::new(None));
 
@@ -230,6 +239,8 @@ async fn main() -> anyhow::Result<()> {
     let pending_action_menu_store_activate = pending_action_menu_store.clone();
     let wallpaper_menu_store_activate = wallpaper_menu_store.clone();
     let should_show_wallpapers_store_activate = should_show_wallpapers_store.clone();
+    let tray_menu_store_activate = tray_menu_store.clone();
+    let should_show_tray_store_activate = should_show_tray_store.clone();
     let menu_css_provider_store_activate = menu_css_provider_store.clone();
     let notify_manager_store_activate = notify_manager_store.clone();
     let pending_notif_store_activate = pending_notif_store.clone();
@@ -379,6 +390,33 @@ async fn main() -> anyhow::Result<()> {
              *should_show_wallpapers_store_activate.borrow_mut() = false;
         }
 
+        // Initialize the StatusNotifier watcher/host and tray menu.
+        if tray_menu_store_activate.borrow().is_none() {
+            let (tray_updates_tx, tray_updates_rx) = async_channel::unbounded();
+            let (tray_commands_tx, tray_commands_rx) = async_channel::unbounded();
+            let tray_menu = tray::TrayMenu::new(app, &menu_css_provider, tray_commands_tx);
+            *tray_menu_store_activate.borrow_mut() = Some(tray_menu.clone());
+
+            tokio::spawn(async move {
+                if let Err(error) = tray::run(tray_updates_tx, tray_commands_rx).await {
+                    eprintln!("System tray service stopped: {}", error);
+                }
+            });
+
+            gtk4::glib::MainContext::default().spawn_local(async move {
+                while let Ok(items) = tray_updates_rx.recv().await {
+                    tray_menu.borrow().update(items);
+                }
+            });
+        }
+
+        if *should_show_tray_store_activate.borrow() {
+            if let Some(menu) = tray_menu_store_activate.borrow().as_ref() {
+                menu.borrow().toggle();
+            }
+            *should_show_tray_store_activate.borrow_mut() = false;
+        }
+
         // Initialize Notification System
         let (dbus_to_gtk_tx, dbus_to_gtk_rx) = async_channel::unbounded();
         let (gtk_to_dbus_tx, gtk_to_dbus_rx) = async_channel::unbounded();
@@ -457,6 +495,8 @@ async fn main() -> anyhow::Result<()> {
     let pending_action_menu_store_cmd = pending_action_menu_store.clone();
     let wallpaper_menu_store_cmd = wallpaper_menu_store.clone();
     let should_show_wallpapers_store_cmd = should_show_wallpapers_store.clone();
+    let tray_menu_store_cmd = tray_menu_store.clone();
+    let should_show_tray_store_cmd = should_show_tray_store.clone();
     let menu_css_provider_store_cmd = menu_css_provider_store.clone();
     let notify_manager_store_cmd = notify_manager_store.clone();
     let pending_notif_store_cmd = pending_notif_store.clone();
@@ -505,6 +545,14 @@ async fn main() -> anyhow::Result<()> {
                          &menu_css_provider_store_cmd,
                          "power",
                      );
+                } else if parsed.tray {
+                     println!("DEBUG: System tray toggle requested");
+                     if let Some(menu) = tray_menu_store_cmd.borrow().as_ref() {
+                         menu.borrow().toggle();
+                     } else {
+                         println!("DEBUG: System tray not initialized yet, marking for launch");
+                         *should_show_tray_store_cmd.borrow_mut() = true;
+                     }
                 } else if parsed.wallpapers {
                      println!("DEBUG: Wallpapers toggle requested");
                      if let Some(menu) = wallpaper_menu_store_cmd.borrow().as_ref() {

@@ -8,6 +8,15 @@ Personal Arch Linux dotfiles and a small Wayland graphical shell, built around [
 
 Anomale Shell is a thin interface on top of MangoWM: a bar, an app launcher, a power menu, notifications, and a wallpaper picker that drives pywal theming. It does not try to replace a full desktop environment. There is no pile of applet widgets or heavily customized GUI apps. The point is to stay out of the way and keep you in the terminal as much as possible.
 
+It also provides an on-demand system tray menu. Run `anomale --tray` (normally from
+a compositor keybind) to list applications that publish a StatusNotifierItem,
+open one, or exit it. Exit uses the application's native Quit action when one is
+available and otherwise sends `SIGTERM` to the process that owns the tray item.
+Navigate with Up/Down, double-tap Right to open the selected application, and
+double-tap Left to exit it.
+The menu follows MangoWM's `all-clients` IPC stream and hides an item while that
+application already has a non-minimized tile on any tag or monitor.
+
 The Rust sources for the shell live under `anomale/thestuff/shell/`. Day to day you are not meant to build that by hand. The install script takes a minimal Arch install (no DE, no display manager), bootstraps yay, pulls dependencies, builds Anomale, drops in the configs, sets up SDDM with the included theme, and wires the boot splash so it survives package upgrades.
 
 If you are not comfortable living in a terminal and editing config files, this setup will probably annoy you. That is intentional.
@@ -40,6 +49,7 @@ These come from `~/.config/mango/config.conf` after install. Super is the Window
 | `Alt` + `Space` | App launcher |
 | `Super` + `Space` | Power menu (shutdown / reboot / logout) |
 | `Super` + `Shift` + `l` | Wallpaper picker (updates pywal theme) |
+| `Super` + `Shift` + `t` | System Tray |
 
 A few more that are useful right away:
 
