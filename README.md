@@ -17,7 +17,7 @@ double-tap Left to exit it.
 The menu follows MangoWM's `all-clients` IPC stream and hides an item while that
 application already has a non-minimized tile on any tag or monitor.
 
-The Rust sources for the shell live under `anomale/thestuff/shell/`. Day to day you are not meant to build that by hand. The install script takes a minimal Arch install (no DE, no display manager), bootstraps yay, pulls dependencies, builds Anomale, drops in the configs, sets up SDDM with the included theme, and wires the boot splash so it survives package upgrades.
+The Rust sources for the shell live under `anomale/thestuff/shell/`. Day to day you are not meant to build that by hand. The install script takes a minimal Arch install (no DE, no display manager), installs official pacman packages, pulls a few Python tools via pip, builds MangoWM (and scenefx) from upstream, installs LibreWolf from Codeberg, builds Anomale, drops in the configs, sets up SDDM with the included theme, and wires the boot splash so it survives package upgrades. It does not use yay or the AUR.
 
 If you are not comfortable living in a terminal and editing config files, this setup will probably annoy you. That is intentional.
 
