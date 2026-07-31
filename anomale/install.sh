@@ -290,8 +290,10 @@ if [[ -f \"$THE_STUFF/splash-arch.bmp\" ]]; then
     install -d /usr/local/share/anomale /usr/local/lib/anomale /etc/pacman.d/hooks
     install -m 644 \"$THE_STUFF/splash-arch.bmp\" /usr/local/share/anomale/splash.bmp
     install -m 755 \"$THE_STUFF/usr/local/lib/anomale/restore-splash.sh\" /usr/local/lib/anomale/restore-splash.sh
-    install -m 644 \"$THE_STUFF/etc/pacman.d/hooks/anomale-splash.hook\" /etc/pacman.d/hooks/anomale-splash.hook
+    install -m 644 \"$THE_STUFF/etc/pacman.d/hooks/zz-anomale-splash.hook\" /etc/pacman.d/hooks/zz-anomale-splash.hook
+    rm -f /etc/pacman.d/hooks/anomale-splash.hook
     /usr/local/lib/anomale/restore-splash.sh --force-rebuild
+
 fi
 if [[ -f \"$THE_STUFF/etc/librewolf/policies.json\" ]]; then
     install -d /usr/local/share/anomale /usr/local/lib/anomale /etc/pacman.d/hooks
