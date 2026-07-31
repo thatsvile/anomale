@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
 
 #clear tty and define variables
 clear
@@ -7,6 +7,20 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 THE_STUFF="$SCRIPT_DIR/thestuff"
 SUDOERS_DROPIN="/etc/sudoers.d/99-anomale-install"
 BUILD_ROOT=""
+
+# pip and getnf drop binaries in these; a login shell does not always have them.
+export PATH="$PATH:/usr/local/bin:$HOME/.local/bin"
+
+# Without this, any failing command under `set -e` exits with no explanation.
+report_failure() {
+    local exit_code=$?
+    # Subshells inherit the trap and would report the same failure twice.
+    [[ "$BASHPID" == "$$" ]] || return 0
+    echo "" >&2
+    echo "ERROR: install.sh aborted at line ${1} (exit ${exit_code})." >&2
+    echo "Failed command: ${2}" >&2
+}
+trap 'report_failure "$LINENO" "$BASH_COMMAND"' ERR
 
 cleanup_install() {
     if [[ -f "$SUDOERS_DROPIN" ]]; then
@@ -46,11 +60,31 @@ install_pacman_packages() {
 
 install_python_packages() {
     echo "Installing Python packages via pip..."
-    pip install --break-system-packages --upgrade \
+
+    # An earlier run may have put these in ~/.local, whose site-packages shadow
+    # the system copies at import time.
+    local stale
+    stale=$(pip list --user --format=freeze 2>/dev/null | cut -d= -f1 \
+        | grep -x -e pywal16 -e pywalfox -e haishoku -e colorz || true)
+    if [[ -n "$stale" ]]; then
+        echo "Removing stale user-level Python packages from a previous run..."
+        # shellcheck disable=SC2086
+        pip uninstall --break-system-packages -y $stale
+    fi
+
+    # System-wide so wal/pywalfox land in /usr/bin. A user-level install puts them
+    # in ~/.local/bin, which the browser does not have on PATH when it spawns the
+    # Pywalfox native messaging host.
+    sudo pip install --break-system-packages --upgrade \
         pywal16 \
         pywalfox \
         haishoku \
         colorz
+
+    if ! command -v wal >/dev/null 2>&1 || ! command -v pywalfox >/dev/null 2>&1; then
+        echo "ERROR: wal/pywalfox missing from PATH after pip install."
+        exit 1
+    fi
 }
 
 install_getnf() {
@@ -100,7 +134,7 @@ install_wifitui() {
     curl -fsSL "$url" -o "$tmp/$asset"
     tar -xzf "$tmp/$asset" -C "$tmp"
     local bin
-    bin=$(find "$tmp" -type f -name wifitui | head -n1)
+    bin=$(find "$tmp" -type f -name wifitui -print -quit)
     if [[ -z "$bin" ]]; then
         echo "ERROR: wifitui binary missing from release archive."
         exit 1
@@ -247,19 +281,20 @@ EOF
 setup_pywalfox() {
     echo "Configuring Pywalfox native messaging host..."
     local pywalfox_bin
-    pywalfox_bin=$(command -v pywalfox)
+    pywalfox_bin=$(command -v pywalfox || true)
     if [[ -z "$pywalfox_bin" ]]; then
         echo "ERROR: pywalfox not on PATH after pip install."
         exit 1
     fi
-    # System mozilla path (matches former AUR package behavior).
+
+    # LibreWolf reads native messaging hosts from the Mozilla paths, so the
+    # global manifest covers it. The manifest records whichever pywalfox path is
+    # used to run the install, so keep this pointed at the system binary.
     sudo "$pywalfox_bin" install --global
-    # LibreWolf-specific host path used by non-Flatpak LibreWolf on Arch.
-    sudo mkdir -p /usr/lib/librewolf/native-messaging-hosts
-    sudo "$pywalfox_bin" install --global --manifest-path /usr/lib/librewolf/native-messaging-hosts
-    # User profile host as a fallback for per-user installs.
-    mkdir -p "$HOME/.librewolf/native-messaging-hosts"
-    "$pywalfox_bin" install --manifest-path "$HOME/.librewolf/native-messaging-hosts" \
+
+    # Per-user manifest as a fallback. Run unsudoed so the profile path setting
+    # is saved to the installing user's config rather than root's.
+    "$pywalfox_bin" install --manifest-path "$HOME/.mozilla/native-messaging-hosts" \
         --profile-path "$HOME/.librewolf"
 }
 
@@ -392,7 +427,7 @@ install_librewolf
 setup_pywalfox
 
 #set fish as system-wide shell and set local/bin path.
-chsh -s /usr/bin/fish
+sudo chsh -s /usr/bin/fish "$USER"
 
 #Required to build anomale
 rustup default stable
