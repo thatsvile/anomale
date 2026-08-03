@@ -14,7 +14,7 @@ If you are not comfortable living in a terminal and editing config files, this s
 
 ## Requirements
 
-- Fresh Arch Linux install (Arch, CachyOS, or EndeavourOS base-style installs are the intended target)
+- Fresh Arch Linux install, May work okay on CachyOS and EndeavourOS, but recent versions are untested.
 - Working network and a usable `pacman` mirrorlist
 - No existing desktop environment or display manager required; the installer enables SDDM
 
