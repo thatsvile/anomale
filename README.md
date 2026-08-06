@@ -1,22 +1,48 @@
-# Anomale Shell + Dots
+# Anomale
 
 [![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=IXHZVE5SDYE)
 
-Personal Arch Linux dotfiles and a small Wayland graphical shell, built around [MangoWM](https://mangowm.github.io) and pywal. This is software I maintain for my own machines. You can use it if you want, but it is not a general-purpose desktop and it is not written with support in mind.
+Personal Arch Linux dots and a small Wayland shell, built around
+[MangoWM](https://mangowm.github.io) and pywal.
 
-## What this is
+This is software I maintain for my own machines. You can use it if you want.
+It is not a general-purpose desktop, and it is not written with support in mind.
 
-Anomale Shell is a thin interface on top of MangoWM: a bar, an app launcher, a power menu, notifications, and a wallpaper picker that drives pywal theming. It does not try to replace a full desktop environment. There is no pile of applet widgets or heavily customized GUI apps. The point is to stay out of the way and keep you in the terminal as much as possible.
+## Overview
 
-The Rust sources for the shell live under `anomale/thestuff/shell/`. Day to day you are not meant to build that by hand. The install script takes a minimal Arch install (no DE, no display manager), installs official pacman packages, pulls a few Python tools via pip, builds MangoWM (and scenefx) from upstream, installs LibreWolf from Codeberg, builds Anomale, drops in the configs, sets up SDDM with the included theme, and wires the boot splash so it survives package upgrades. It does not use yay or the AUR.
+Anomale is two pieces that ship together:
 
-If you are not comfortable living in a terminal and editing config files, this setup will probably annoy you. That is intentional.
+1. **Dotfiles** — MangoWM session config, terminal/shell setup (`foot` / `fish`),
+   GTK theming, SDDM theme, and pywal templates that keep colors consistent.
+2. **Anomale Shell** — a thin GTK4 layer-shell interface on top of Mango:
+   status bar, app launcher, power menu, notifications, system tray, and a
+   wallpaper picker that regenerates the pywal theme.
+
+It does not try to replace a full desktop environment. No applet pile, no
+heavily customized GUI apps. The point is to stay out of the way and keep you
+in the terminal as much as possible. If that sounds annoying, this setup is
+not for you — that is intentional.
+
+Sources for the shell live under `anomale/thestuff/shell/`. Day to day you are
+not meant to build that by hand; the install script builds it and installs the
+dots.
+
+## Stack
+
+| Piece | Role |
+| --- | --- |
+| Arch Linux | Base system (official repos + a few upstream builds; no AUR) |
+| MangoWM | Window manager / compositor |
+| Anomale | Bar, menus, notifications, tray, wallpaper → pywal |
+| pywal16 | Color scheme from wallpaper (terminal, GTK, mango, SDDM, browser) |
+| SDDM + Anomalous | Display manager and login theme |
+| foot + fish | Default terminal and shell |
 
 ## Requirements
 
-- Fresh Arch Linux install, May work okay on CachyOS and EndeavourOS, but recent versions are untested.
+- Fresh Arch install (CachyOS / EndeavourOS may work; recent versions untested)
 - Working network and a usable `pacman` mirrorlist
-- No existing desktop environment or display manager required; the installer enables SDDM
+- No existing DE or display manager required; the installer enables SDDM
 
 ## Installation
 
@@ -27,40 +53,85 @@ chmod +x anomale/anomale/install.sh
 bash anomale/anomale/install.sh
 ```
 
-The script will ask for sudo early and keep it alive for the rest of the run. It also asks whether you have an NVIDIA GPU so the Mango session autostart script gets the right environment variables. When it finishes, reboot.
+The script asks for sudo early and keeps it alive. It will also ask whether you
+have an NVIDIA GPU so the Mango session autostart script gets the right
+environment. When it finishes, reboot.
+
+What the installer roughly does: installs pacman packages, a few Python tools
+via pip, builds MangoWM (and scenefx) from upstream, builds Anomale, copies
+configs and wallpapers, sets up SDDM, and wires session autostart.
 
 ## Essential keybinds
 
-These come from `~/.config/mango/config.conf` after install. Super is the Windows/Command key.
+From `~/.config/mango/config.conf` after install. Super is the Windows/Command key.
 
 | Binding | Action |
 | --- | --- |
-| `Super` + `Tab` | Open a terminal (`foot`) |
-| `Super` + `q` | Close the focused window |
+| `Super` + `Tab` | Terminal (`foot`) |
+| `Super` + `q` | Close focused window |
 | `Alt` + `Space` | App launcher |
-| `Super` + `Space` | Power menu (shutdown / reboot / logout) |
-| `Super` + `Shift` + `l` | Wallpaper picker (updates pywal theme) |
-| `Super` + `Shift` + `t` | System Tray |
-
-A few more that are useful right away:
-
-| Binding | Action |
-| --- | --- |
-| `Alt` + arrow keys | Move focus between tiled windows |
+| `Super` + `Space` | Power menu |
+| `Super` + `Shift` + `l` | Wallpaper picker (updates pywal) |
+| `Super` + `Shift` + `t` | System tray |
+| `Alt` + arrows | Move focus |
 | `Super` + `Left` / `Right` | Switch tags |
-| `Alt` + `f` | Toggle fullscreen |
+| `Alt` + `f` | Fullscreen |
 | `Super` + `a` | Toggle floating |
 | `Alt` + `Tab` | Overview |
 
-The full bind list lives in the mango config. Change it there if you want different muscle memory.
+The full bind list is in the mango config — edit it there.
+
+Useful terminal popups bound in the same file: wifi (`wifitui`), `btop`,
+`pulsemixer`, screenshots / short recordings (`mangoshooter` / `mangorecorder`).
 
 ## After install
 
-- Session entry is SDDM with the included Anomalous theme.
+- Log in through SDDM (Anomalous theme).
 - Default terminal is `foot`; shell is `fish`.
-- Wallpapers land in `~/Pictures/wallpaper/`. Changing wallpaper through Anomale refreshes pywal colors across terminal, GTK, and the SDDM theme background.
-- Anomale and Mango configs live under `~/.config/anomale/` and `~/.config/mango/`.
+- Wallpapers live in `~/Pictures/wallpaper/`. Picking one through Anomale
+  refreshes pywal colors for terminal, GTK, mango, and the SDDM background.
+- **Mango:** `~/.config/mango/`
+- **Anomale:** `~/.config/anomale/` (`config.conf`, `menus.conf`, `notifications.conf`)
+- **pywal templates:** `~/.config/wal/templates/`
+
+## Maintenance (`anomale-apps`)
+
+These dots intentionally avoid the AUR. Anything that used to come from there
+(or otherwise is not in the official Arch repos) is installed from trusted
+upstream sources instead. After install, `anomale-apps` in `~/.local/bin` is
+how you keep those pieces current without re-running the full installer.
+
+```bash
+anomale-apps status   # installed vs upstream, no changes
+anomale-apps update   # update what is behind
+```
+
+It tracks:
+
+- **Anomale shell** (rebuild from this repo’s `shell/` tree → `~/.local/bin/anomale`)
+- **MangoWM** and **scenefx** (build from GitHub)
+- **LibreWolf** (official Codeberg packages; profiles in `~/.librewolf` are left alone)
+- **wifitui** (GitHub releases)
+- **pip:** pywal16, pywalfox, haishoku, colorz
+
+Regular Arch packages still update with `pacman` as usual. Use `anomale-apps`
+for the non-repo stack above.
+
+## Layout of this repo
+
+```
+anomale/
+  install.sh              # primary install path
+  thestuff/
+    shell/                # Anomale Shell (Rust)
+    .config/              # shipped user configs
+    .local/bin/           # helpers (incl. anomale-apps) and session scripts
+    anomalous/            # SDDM theme
+    wallpaper/            # starter wallpapers
+    pacmanlist.txt        # official packages the installer pulls
+```
 
 ## Notes
 
-This repo will keep changing as I adjust my own setup. Expect breakage if you track it blindly. Issues and patches from other people may sit unanswered for a long time, or forever.
+This repo tracks my machines. Expect breakage if you follow it blindly.
+Issues and patches may sit unanswered for a long time, or forever.
