@@ -100,31 +100,13 @@ install_getnf() {
     rm -rf "$tmp"
 }
 
-install_notwaita_cursors() {
-    if [[ -d /usr/share/icons/Notwaita-Gray || -d /usr/share/icons/Notwaita-Black ]]; then
-        echo "Notwaita cursor theme already installed."
-        return 0
-    fi
-    echo "Installing Notwaita cursor theme from GitHub..."
-    local tmp tag url
-    tmp=$(mktemp -d)
-    tag=$(curl -fsSL "https://api.github.com/repos/ful1e5/notwaita-cursor/releases/latest" \
-        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
-    url="https://github.com/ful1e5/notwaita-cursor/releases/download/${tag}/Notwaita.tar.xz"
-    curl -fsSL "$url" -o "$tmp/Notwaita.tar.xz"
-    tar -xJf "$tmp/Notwaita.tar.xz" -C "$tmp"
-    sudo install -d /usr/share/icons
-    sudo cp -a "$tmp"/Notwaita-* /usr/share/icons/
-    rm -rf "$tmp"
-}
-
 install_wifitui() {
     if command -v wifitui >/dev/null 2>&1; then
         echo "wifitui already installed."
         return 0
     fi
     echo "Installing wifitui from upstream release..."
-    local tmp tag arch asset url
+    local tmp tag arch asset url stamp_dir
     tmp=$(mktemp -d)
     arch=$(detect_cpu_arch)
     tag=$(curl -fsSL "https://api.github.com/repos/shazow/wifitui/releases/latest" \
@@ -140,6 +122,9 @@ install_wifitui() {
         exit 1
     fi
     sudo install -Dm755 "$bin" /usr/local/bin/wifitui
+    stamp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/anomale/src"
+    mkdir -p "$stamp_dir"
+    echo "$tag" >"$stamp_dir/wifitui.installed"
     rm -rf "$tmp"
 }
 
@@ -419,7 +404,6 @@ BUILD_ROOT=$(mktemp -d)
 install_pacman_packages
 install_python_packages
 install_getnf
-install_notwaita_cursors
 install_wifitui
 install_scenefx
 install_mangowm
@@ -450,6 +434,14 @@ fi
 mkdir -p "$HOME/.local/bin/"
 cp "$THE_STUFF/shell/target/release/anomale" "$HOME/.local/bin/"
 chmod +x "$HOME/.local/bin/anomale"
+
+# Stamp shell tree so anomale-apps -update can skip rebuild when unchanged.
+stamp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/anomale/src"
+mkdir -p "$stamp_dir"
+if git -C "$SCRIPT_DIR/.." rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$SCRIPT_DIR/.." rev-parse --short=12 HEAD:anomale/thestuff/shell \
+        >"$stamp_dir/shell.installed" 2>/dev/null || true
+fi
 
 #copy wallpaper/ .config .local & .cache contents
 mkdir -p "$HOME/Pictures/wallpaper/"

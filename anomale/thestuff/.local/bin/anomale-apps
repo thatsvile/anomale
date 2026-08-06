@@ -1,0 +1,632 @@
+#!/bin/bash
+# Update Anomale's non-repo upstream apps.
+# Installed to ~/.local/bin by install.sh with the rest of the dots.
+set -euo pipefail
+
+CACHE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/anomale/src"
+LIBREWOLF_KEY="662E3CDD6FE329002D0CA5BB40339DD82B12EF16"
+SCENEFX_BRANCH="0.5"
+MANGO_REPO="https://github.com/mangowm/mango.git"
+SCENEFX_REPO="https://github.com/wlrfx/scenefx.git"
+ANOMALE_REPO="https://github.com/thatsvile/anomale.git"
+ANOMALE_SHELL_GITPATH="anomale/thestuff/shell"
+PIP_PACKAGES=(pywal16 pywalfox haishoku colorz)
+WIFITUI_REPO="shazow/wifitui"
+
+usage() {
+    cat <<'EOF'
+Usage: anomale-apps <command>
+
+Commands:
+  -update, --update, update   Check upstream apps and update if newer
+  -status, --status, status   Show installed vs upstream (no changes)
+  -h, --help, help            Show this help
+
+Tracks: LibreWolf (Codeberg), MangoWM + scenefx (GitHub), Anomale shell
+(this dots repo, shell path only), wifitui (GitHub releases), and the pip
+packages pywal16 / pywalfox / haishoku / colorz.
+
+LibreWolf replaces /usr/lib/librewolf only; ~/.librewolf is left alone.
+MangoWM/scenefx install in-place under /usr. Anomale shell lands in ~/.local/bin.
+EOF
+}
+
+need_cmd() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "ERROR: required command not found: $1" >&2
+        exit 1
+    }
+}
+
+ensure_tools() {
+    need_cmd curl
+    need_cmd git
+    need_cmd python3
+    need_cmd gpg
+    need_cmd tar
+    need_cmd meson
+    need_cmd pkg-config
+    need_cmd sudo
+    need_cmd pip
+}
+
+arch_name() {
+    case "$(uname -m)" in
+        x86_64) echo "x86_64" ;;
+        aarch64|arm64) echo "arm64" ;;
+        *)
+            echo "ERROR: Unsupported architecture: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# --- LibreWolf -------------------------------------------------------------
+
+installed_librewolf_version() {
+    if [[ -f /usr/lib/librewolf/application.ini ]]; then
+        awk -F= '/^Version=/ { print $2; exit }' /usr/lib/librewolf/application.ini
+        return 0
+    fi
+    if command -v librewolf >/dev/null 2>&1; then
+        librewolf --version 2>/dev/null | awk '{ print $NF; exit }'
+        return 0
+    fi
+    echo ""
+}
+
+latest_librewolf_version() {
+    python3 - <<'PY'
+import json
+import re
+import urllib.request
+
+url = "https://codeberg.org/api/v1/packages/librewolf?type=generic&q=librewolf&limit=50"
+with urllib.request.urlopen(url, timeout=30) as resp:
+    packages = json.load(resp)
+
+versions = []
+for pkg in packages:
+    if pkg.get("name") != "librewolf":
+        continue
+    ver = pkg.get("version") or ""
+    m = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?-(\d+)$", ver)
+    if not m:
+        continue
+    major, minor, patch, rev = m.groups()
+    versions.append(((int(major), int(minor), int(patch or 0), int(rev)), ver))
+
+if not versions:
+    raise SystemExit("no librewolf package versions found on Codeberg")
+
+versions.sort(reverse=True)
+print(versions[0][1])
+PY
+}
+
+install_librewolf_version() {
+    local ver="$1"
+    local tmp arch url_base tarball sig size
+    tmp=$(mktemp -d)
+    arch=$(arch_name)
+    url_base="https://codeberg.org/api/packages/librewolf/generic/librewolf/${ver}"
+    tarball="librewolf-${ver}-linux-${arch}-package.tar.xz"
+    sig="${tarball}.sig"
+
+    echo "Downloading LibreWolf ${ver}..."
+    curl -fsSL "${url_base}/${tarball}" -o "$tmp/$tarball"
+    curl -fsSL "${url_base}/${sig}" -o "$tmp/$sig"
+
+    if ! gpg --list-keys "$LIBREWOLF_KEY" >/dev/null 2>&1; then
+        echo "Importing LibreWolf packaging key..."
+        gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys "$LIBREWOLF_KEY"
+    fi
+    gpg --verify "$tmp/$sig" "$tmp/$tarball"
+
+    tar -xJf "$tmp/$tarball" -C "$tmp"
+
+    # Binary tree only — never touch ~/.librewolf (profiles/settings).
+    sudo rm -rf /usr/lib/librewolf
+    sudo mkdir -p /usr/lib/librewolf
+    sudo cp -a "$tmp/librewolf/." /usr/lib/librewolf/
+
+    sudo tee /usr/bin/librewolf >/dev/null <<'EOF'
+#!/bin/sh
+exec /usr/lib/librewolf/librewolf "$@"
+EOF
+    sudo chmod 755 /usr/bin/librewolf
+    sudo ln -sfr /usr/bin/librewolf /usr/lib/librewolf/librewolf-bin
+
+    sudo tee /usr/share/applications/librewolf.desktop >/dev/null <<'EOF'
+[Desktop Entry]
+Version=1.0
+Name=LibreWolf
+GenericName=Web Browser
+Comment=Privacy-focused Firefox fork
+Exec=librewolf %u
+Icon=librewolf
+Terminal=false
+Type=Application
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+Categories=Network;WebBrowser;
+StartupWMClass=librewolf-default
+EOF
+
+    for size in 16 32 48 64 128; do
+        if [[ -f /usr/lib/librewolf/browser/chrome/icons/default/default${size}.png ]]; then
+            sudo install -Dm644 \
+                "/usr/lib/librewolf/browser/chrome/icons/default/default${size}.png" \
+                "/usr/share/icons/hicolor/${size}x${size}/apps/librewolf.png"
+        fi
+    done
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        sudo gtk-update-icon-cache -f /usr/share/icons/hicolor >/dev/null 2>&1 || true
+    fi
+
+    if [[ -x /usr/local/lib/anomale/librewolf-pywalfox-policy.sh ]]; then
+        echo "Re-merging Anomale LibreWolf policies..."
+        sudo /usr/local/lib/anomale/librewolf-pywalfox-policy.sh
+    fi
+
+    rm -rf "$tmp"
+    echo "LibreWolf updated to ${ver}."
+}
+
+update_librewolf() {
+    local current latest
+    current=$(installed_librewolf_version)
+    latest=$(latest_librewolf_version)
+
+    if [[ -z "$latest" ]]; then
+        echo "ERROR: could not determine latest LibreWolf version." >&2
+        return 1
+    fi
+
+    if [[ -n "$current" && "$current" == "$latest" ]]; then
+        echo "LibreWolf: already up to date ($current)."
+        return 1
+    fi
+
+    if [[ -z "$current" ]]; then
+        echo "LibreWolf: not installed; installing ${latest}..."
+    else
+        echo "LibreWolf: ${current} -> ${latest}"
+    fi
+    install_librewolf_version "$latest"
+    return 0
+}
+
+# --- git helpers -----------------------------------------------------------
+
+ensure_repo() {
+    local dir="$1" url="$2" branch="${3:-}"
+    mkdir -p "$(dirname "$dir")"
+    # Quiet clones/fetches; status/update should not dump git noise.
+    export GIT_CONFIG_COUNT=1
+    export GIT_CONFIG_KEY_0=advice.detachedHead
+    export GIT_CONFIG_VALUE_0=false
+    if [[ -d "$dir/.git" ]]; then
+        git -C "$dir" remote set-url origin "$url" >/dev/null
+        if [[ -n "$branch" ]]; then
+            git -C "$dir" fetch --quiet --depth 1 origin "$branch"
+            git -C "$dir" checkout -q -B "$branch" FETCH_HEAD
+        else
+            git -C "$dir" fetch --quiet --depth 1 origin HEAD
+            git -C "$dir" checkout -q -B anomale-upstream FETCH_HEAD
+        fi
+        git -C "$dir" reset --quiet --hard FETCH_HEAD
+    else
+        rm -rf "$dir"
+        if [[ -n "$branch" ]]; then
+            git clone --quiet --depth 1 --branch "$branch" "$url" "$dir"
+        else
+            git clone --quiet --depth 1 "$url" "$dir"
+        fi
+    fi
+}
+
+repo_short_hash() {
+    git -C "$1" rev-parse --short=7 HEAD
+}
+
+print_row() {
+    # name | installed | upstream | note
+    printf '%-14s  %-14s  %-14s  %s\n' "$1" "$2" "$3" "$4"
+}
+
+status_note() {
+    local installed="$1" upstream="$2"
+    if [[ -z "$installed" || "$installed" == "-" ]]; then
+        echo "update available"
+    elif [[ "$installed" == "$upstream" ]]; then
+        echo "up to date"
+    else
+        echo "update available"
+    fi
+}
+
+# --- scenefx ---------------------------------------------------------------
+
+installed_scenefx_ok() {
+    pkg-config --exists "scenefx-${SCENEFX_BRANCH}" 2>/dev/null
+}
+
+update_scenefx() {
+    local src build_hash stamp
+    src="$CACHE_ROOT/scenefx"
+    stamp="$CACHE_ROOT/scenefx.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    ensure_repo "$src" "$SCENEFX_REPO" "$SCENEFX_BRANCH"
+    build_hash=$(repo_short_hash "$src")
+
+    if installed_scenefx_ok; then
+        if [[ ! -f "$stamp" ]]; then
+            echo "$build_hash" >"$stamp"
+            echo "scenefx: already up to date (${SCENEFX_BRANCH} @ ${build_hash})."
+            return 1
+        fi
+        if [[ "$(cat "$stamp")" == "$build_hash" ]]; then
+            echo "scenefx: already up to date (${SCENEFX_BRANCH} @ ${build_hash})."
+            return 1
+        fi
+        echo "scenefx: $(cat "$stamp") -> ${build_hash}"
+    else
+        echo "scenefx: not found; building ${SCENEFX_BRANCH} @ ${build_hash}..."
+    fi
+
+    rm -rf "$src/build"
+    meson setup --prefix=/usr --buildtype=release "$src/build" "$src"
+    meson compile -C "$src/build"
+    sudo meson install -C "$src/build"
+    sudo ldconfig
+    echo "$build_hash" >"$stamp"
+    echo "scenefx updated (${SCENEFX_BRANCH} @ ${build_hash})."
+    return 0
+}
+
+# --- MangoWM ---------------------------------------------------------------
+
+installed_mango_hash() {
+    if ! command -v mango >/dev/null 2>&1; then
+        echo ""
+        return 0
+    fi
+    mango -v 2>/dev/null | sed -n 's/.*(\([0-9a-fA-F]*\)).*/\1/p' | head -1
+}
+
+update_mangowm() {
+    local src remote_hash installed_hash
+    src="$CACHE_ROOT/mango"
+    ensure_repo "$src" "$MANGO_REPO"
+    remote_hash=$(repo_short_hash "$src")
+    installed_hash=$(installed_mango_hash)
+
+    if [[ -n "$installed_hash" && "$installed_hash" == "$remote_hash" ]]; then
+        echo "MangoWM: already up to date (${remote_hash})."
+        return 1
+    fi
+
+    if [[ -z "$installed_hash" ]]; then
+        echo "MangoWM: not installed; building ${remote_hash}..."
+    else
+        echo "MangoWM: ${installed_hash} -> ${remote_hash}"
+    fi
+
+    update_scenefx || true
+
+    rm -rf "$src/build"
+    meson setup --prefix=/usr --buildtype=release "$src/build" "$src"
+    meson compile -C "$src/build"
+    sudo meson install -C "$src/build"
+
+    if ! command -v mango >/dev/null 2>&1; then
+        echo "ERROR: mango binary missing after install." >&2
+        return 1
+    fi
+    echo "MangoWM updated to $(mango -v 2>/dev/null || echo "$remote_hash")."
+    return 0
+}
+
+# --- Anomale shell (dots repo, shell path only) -----------------------------
+
+shell_tree_hash() {
+    # Tree OID for anomale/thestuff/shell at HEAD — ignores dots changes outside shell/.
+    git -C "$1" rev-parse --short=12 "HEAD:${ANOMALE_SHELL_GITPATH}"
+}
+
+update_anomale_shell() {
+    local src stamp remote_tree shell_dir
+    src="$CACHE_ROOT/anomale-dots"
+    stamp="$CACHE_ROOT/shell.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    ensure_repo "$src" "$ANOMALE_REPO"
+    remote_tree=$(shell_tree_hash "$src")
+    shell_dir="$src/$ANOMALE_SHELL_GITPATH"
+
+    if [[ ! -f "$shell_dir/Cargo.toml" ]]; then
+        echo "ERROR: shell sources missing at $shell_dir" >&2
+        return 1
+    fi
+
+    if [[ -x "$HOME/.local/bin/anomale" && -f "$stamp" && "$(cat "$stamp")" == "$remote_tree" ]]; then
+        echo "Anomale shell: already up to date (${remote_tree})."
+        return 1
+    fi
+
+    if [[ -f "$stamp" ]]; then
+        echo "Anomale shell: $(cat "$stamp") -> ${remote_tree}"
+    else
+        echo "Anomale shell: building ${remote_tree}..."
+    fi
+
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1091
+        source "$HOME/.cargo/env"
+    fi
+    need_cmd cargo
+
+    (cd "$shell_dir" && cargo build --release)
+    if [[ ! -x "$shell_dir/target/release/anomale" ]]; then
+        echo "ERROR: Anomale failed to build." >&2
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    cp "$shell_dir/target/release/anomale" "$HOME/.local/bin/anomale"
+    chmod +x "$HOME/.local/bin/anomale"
+    echo "$remote_tree" >"$stamp"
+    echo "Anomale shell updated (${remote_tree})."
+    return 0
+}
+
+# --- wifitui ---------------------------------------------------------------
+
+latest_wifitui_tag() {
+    curl -fsSL "https://api.github.com/repos/${WIFITUI_REPO}/releases/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])"
+}
+
+installed_wifitui_tag() {
+    local stamp="$CACHE_ROOT/wifitui.installed"
+    if [[ -f "$stamp" ]]; then
+        cat "$stamp"
+        return 0
+    fi
+    echo ""
+}
+
+update_wifitui() {
+    local latest current tmp arch asset url tag_stripped stamp bin
+    stamp="$CACHE_ROOT/wifitui.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    latest=$(latest_wifitui_tag)
+    current=$(installed_wifitui_tag)
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" && "$current" == "$latest" ]]; then
+        echo "wifitui: already up to date ($latest)."
+        return 1
+    fi
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" ]]; then
+        echo "wifitui: ${current} -> ${latest}"
+    else
+        echo "wifitui: installing ${latest}..."
+    fi
+
+    tmp=$(mktemp -d)
+    arch=$(arch_name)
+    tag_stripped="${latest#v}"
+    asset="wifitui-${tag_stripped}-linux-${arch}.tar.gz"
+    url="https://github.com/${WIFITUI_REPO}/releases/download/${latest}/${asset}"
+
+    curl -fsSL "$url" -o "$tmp/$asset"
+    tar -xzf "$tmp/$asset" -C "$tmp"
+    bin=$(find "$tmp" -type f -name wifitui -print -quit)
+    if [[ -z "$bin" ]]; then
+        echo "ERROR: wifitui binary missing from release archive." >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+    sudo install -Dm755 "$bin" /usr/local/bin/wifitui
+    echo "$latest" >"$stamp"
+    rm -rf "$tmp"
+    echo "wifitui updated to ${latest}."
+    return 0
+}
+
+# --- pip packages ----------------------------------------------------------
+
+update_pip_packages() {
+    local outdated upgraded
+    outdated=$(
+        python3 - <<'PY'
+import json
+import subprocess
+import sys
+
+wanted = {"pywal16", "pywalfox", "haishoku", "colorz"}
+try:
+    out = subprocess.check_output(
+        [sys.executable, "-m", "pip", "list", "--outdated", "--format=json"],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+except subprocess.CalledProcessError:
+    sys.exit(0)
+
+pkgs = json.loads(out or "[]")
+names = sorted(p["name"] for p in pkgs if p.get("name", "").lower() in {w.lower() for w in wanted})
+print("\n".join(names))
+PY
+    )
+
+    # Also install any that are missing entirely.
+    local missing=()
+    local pkg
+    for pkg in "${PIP_PACKAGES[@]}"; do
+        if ! python3 -m pip show "$pkg" >/dev/null 2>&1; then
+            missing+=("$pkg")
+        fi
+    done
+
+    if [[ -z "$outdated" && ${#missing[@]} -eq 0 ]]; then
+        echo "pip: pywal16/pywalfox/haishoku/colorz already up to date."
+        return 1
+    fi
+
+    upgraded=()
+    [[ -n "$outdated" ]] && mapfile -t upgraded <<<"$outdated"
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "pip: missing -> ${missing[*]}"
+    fi
+    if [[ ${#upgraded[@]} -gt 0 ]]; then
+        echo "pip: outdated -> ${upgraded[*]}"
+    fi
+
+    # System-wide so wal/pywalfox stay on the PATH the browser expects.
+    sudo python3 -m pip install --break-system-packages --upgrade "${PIP_PACKAGES[@]}"
+    echo "pip packages updated."
+    return 0
+}
+
+# --- commands --------------------------------------------------------------
+
+cmd_status() {
+    ensure_tools
+    mkdir -p "$CACHE_ROOT"
+
+    local cur lat sfx_stamp sfx_lat shell_cur
+
+    printf '%-14s  %-14s  %-14s  %s\n' "APP" "INSTALLED" "UPSTREAM" "STATUS"
+    printf '%-14s  %-14s  %-14s  %s\n' "---" "---------" "--------" "------"
+
+    cur=$(installed_librewolf_version)
+    lat=$(latest_librewolf_version)
+    print_row "LibreWolf" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+
+    ensure_repo "$CACHE_ROOT/mango" "$MANGO_REPO"
+    cur=$(installed_mango_hash)
+    lat=$(repo_short_hash "$CACHE_ROOT/mango")
+    print_row "MangoWM" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+
+    ensure_repo "$CACHE_ROOT/scenefx" "$SCENEFX_REPO" "$SCENEFX_BRANCH"
+    sfx_lat=$(repo_short_hash "$CACHE_ROOT/scenefx")
+    sfx_stamp=$(cat "$CACHE_ROOT/scenefx.installed" 2>/dev/null || true)
+    if ! installed_scenefx_ok; then
+        print_row "scenefx" "-" "$sfx_lat" "update available"
+    elif [[ -z "$sfx_stamp" ]]; then
+        # First run only records a stamp; treat as current if the package is present.
+        print_row "scenefx" "$sfx_lat" "$sfx_lat" "up to date"
+    else
+        print_row "scenefx" "$sfx_stamp" "$sfx_lat" "$(status_note "$sfx_stamp" "$sfx_lat")"
+    fi
+
+    ensure_repo "$CACHE_ROOT/anomale-dots" "$ANOMALE_REPO"
+    lat=$(shell_tree_hash "$CACHE_ROOT/anomale-dots")
+    shell_cur=$(cat "$CACHE_ROOT/shell.installed" 2>/dev/null || true)
+    if [[ ! -x "$HOME/.local/bin/anomale" ]]; then
+        print_row "Anomale" "-" "$lat" "update available"
+    else
+        print_row "Anomale" "${shell_cur:--}" "$lat" "$(status_note "${shell_cur:--}" "$lat")"
+    fi
+
+    cur=$(installed_wifitui_tag)
+    lat=$(latest_wifitui_tag)
+    if ! command -v wifitui >/dev/null 2>&1; then
+        print_row "wifitui" "-" "$lat" "update available"
+    else
+        print_row "wifitui" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+
+    python3 - <<'PY'
+import importlib.metadata as md
+import json
+import subprocess
+import sys
+
+wanted = ["pywal16", "pywalfox", "haishoku", "colorz"]
+outdated = {}
+try:
+    out = subprocess.check_output(
+        [sys.executable, "-m", "pip", "list", "--outdated", "--format=json"],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+    for p in json.loads(out or "[]"):
+        outdated[p["name"].lower()] = p.get("latest_version") or p.get("version")
+except subprocess.CalledProcessError:
+    pass
+
+for name in wanted:
+    try:
+        cur = md.version(name)
+    except md.PackageNotFoundError:
+        print(f"{name:<14}  {'-':<14}  {'?':<14}  update available")
+        continue
+    lat = outdated.get(name.lower(), cur)
+    status = "up to date" if lat == cur else "update available"
+    print(f"{name:<14}  {cur:<14}  {lat:<14}  {status}")
+PY
+}
+
+cmd_update() {
+    ensure_tools
+    local updated=0
+
+    echo "==> Checking LibreWolf (Codeberg)..."
+    if update_librewolf; then updated=1; fi
+
+    echo "==> Checking MangoWM (GitHub)..."
+    if update_mangowm; then
+        updated=1
+    else
+        echo "==> Checking scenefx (GitHub)..."
+        if update_scenefx; then updated=1; fi
+    fi
+
+    echo "==> Checking Anomale shell (dots repo)..."
+    if update_anomale_shell; then updated=1; fi
+
+    echo "==> Checking wifitui (GitHub releases)..."
+    if update_wifitui; then updated=1; fi
+
+    echo "==> Checking pip packages..."
+    if update_pip_packages; then updated=1; fi
+
+    echo
+    if [[ "$updated" -eq 0 ]]; then
+        echo "Nothing needs to be updated."
+    else
+        echo "Done."
+    fi
+}
+
+main() {
+    if [[ $# -lt 1 ]]; then
+        usage
+        exit 1
+    fi
+
+    case "$1" in
+        -update|--update|update)
+            cmd_update
+            ;;
+        -status|--status|status)
+            cmd_status
+            ;;
+        -h|--help|help)
+            usage
+            ;;
+        *)
+            echo "Unknown command: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
