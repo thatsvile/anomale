@@ -101,21 +101,45 @@ stacksidebar {{
     border: none;
 }}
 
-/* Reset row styling to fix weird rounded edges */
+/* Compact sidebar rows */
 .sidebar row, 
 placessidebar row,
-placessidebar row.sidebar-new-row-style {{
-    padding: 8px 10px;
-    margin: 1px 5px;
+placessidebar row.sidebar-new-row-style,
+.navigation-sidebar > row,
+row.sidebar-row {{
+    padding: 0px;
+    margin: 0px 2px;
+    min-height: 26px;
     border-radius: 0px;
     border: none;
     background-image: none;
 }}
 
+/* GTK4 placessidebar puts padding on the inner revealer */
+placessidebar row > revealer,
+.sidebar row > revealer,
+.navigation-sidebar > row > revealer {{
+    padding: 2px 8px;
+}}
+
+/* File picker sidebar — tighter spacing */
+.file-chooser placessidebar row,
+filechooser placessidebar row {{
+    min-height: 24px;
+    margin: 0px;
+}}
+
+.file-chooser placessidebar row > revealer,
+filechooser placessidebar row > revealer {{
+    padding: 1px 6px;
+}}
+
 .sidebar row:selected, 
-placessidebar row:selected {{
+placessidebar row:selected,
+.navigation-sidebar > row:selected {{
     background-color: {color2};
     color: {background};
+    border-radius: 0px;
     transition: all 150ms ease;
 }}
 
@@ -143,7 +167,25 @@ iconview:selected,
 treeview:selected,
 .view:selected:focus, 
 iconview:selected:focus,
-treeview:selected:focus {{
+treeview:selected:focus,
+listview row:selected,
+gridview item:selected,
+filechooser listview row:selected,
+filechooser gridview item:selected {{
+    background-color: {color2};
+    color: {background};
+    border-radius: 0px;
+}}
+
+/* Thunar icon/thumbnail selection */
+.thunar .standard-view .view:selected,
+.thunar .standard-view iconview:selected,
+.thunar iconview.view:selected,
+.thunar .view:selected,
+.thunar .view:selected:focus,
+.thunar iconview:selected:focus,
+.thunar iconview .label:selected,
+.thunar .standard-view .view .label:selected {{
     background-color: {color2};
     color: {background};
     border-radius: 0px;
@@ -156,18 +198,56 @@ rubberband, .rubberband {{
 }}
 
 /* --- PATH BAR & BREADCRUMBS --- */
+.file-chooser #pathbarbox,
+filechooser #pathbarbox,
 .file-chooser .path-bar-container,
 .path-bar {{
     background-color: @bg_color;
+    min-height: 0px;
+    padding: 0px 4px;
 }}
 
+/* Compact breadcrumb buttons */
+.file-chooser .path-bar button,
+filechooser .path-bar.linked > button,
 .path-bar button {{
     background-image: none;
     background-color: alpha({foreground}, 0.05);
     border: 1px solid transparent;
-    margin: 0px 2px;
+    margin: 0px 1px;
+    min-height: 20px;
+    padding: 0px 4px;
     border-radius: 0px;
     color: @fg_color;
+}}
+
+.path-bar button.text-button,
+.path-bar button.image-button {{
+    padding-left: 4px;
+    padding-right: 4px;
+}}
+
+.path-bar button label:first-child {{
+    padding-left: 4px;
+}}
+
+.path-bar button label:last-child {{
+    padding-right: 4px;
+}}
+
+.path-bar button.image-button,
+.path-bar button.slider-button {{
+    min-width: 20px;
+    padding: 0px 2px;
+}}
+
+/* Search entry shares the pathbar stack and sets its height even when hidden */
+.file-chooser #pathbarbox entry,
+filechooser #pathbarbox entry,
+filechooser #pathbarbox search,
+filechooser #pathbarbox .search {{
+    min-height: 0px;
+    padding: 0px 4px;
 }}
 
 .path-bar button:checked {{
