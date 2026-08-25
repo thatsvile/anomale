@@ -64,3 +64,7 @@ xl2tpd
 xorg-xwayland
 zram-generator
 bluetui
+ffmpeg4.4
+gst-plugins-good
+gst-plugins-bad
+gst-plugins-ugly
