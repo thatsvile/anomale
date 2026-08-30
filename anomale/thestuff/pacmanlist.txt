@@ -21,11 +21,13 @@ hwdetect
 hwinfo
 imagemagick
 libnotify
+librewolf
 libsixel
 libpulse
 meson
 nano
 ninja
+niri
 nwg-look
 pango
 polkit-gnome

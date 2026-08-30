@@ -128,141 +128,6 @@ install_wifitui() {
     rm -rf "$tmp"
 }
 
-install_scenefx() {
-    if pkg-config --exists scenefx-0.5; then
-        echo "scenefx 0.5 already available."
-        return 0
-    fi
-    echo "Building scenefx 0.5 from upstream..."
-    local src
-    src="$BUILD_ROOT/scenefx"
-    git clone --depth 1 --branch 0.5 https://github.com/wlrfx/scenefx.git "$src"
-    meson setup --prefix=/usr --buildtype=release "$src/build" "$src"
-    meson compile -C "$src/build"
-    sudo meson install -C "$src/build"
-    sudo ldconfig
-}
-
-install_mangowm() {
-    if command -v mango >/dev/null 2>&1; then
-        echo "MangoWM already installed; rebuilding from latest upstream..."
-    else
-        echo "Building MangoWM from upstream..."
-    fi
-    local src
-    src="$BUILD_ROOT/mango"
-    git clone --depth 1 https://github.com/mangowm/mango.git "$src"
-    meson setup --prefix=/usr --buildtype=release "$src/build" "$src"
-    meson compile -C "$src/build"
-    sudo meson install -C "$src/build"
-    if ! command -v mango >/dev/null 2>&1; then
-        echo "ERROR: mango binary missing after install."
-        exit 1
-    fi
-}
-
-latest_librewolf_version() {
-    python3 - <<'PY'
-import json
-import re
-import urllib.request
-
-url = "https://codeberg.org/api/v1/packages/librewolf?type=generic&q=librewolf&limit=50"
-with urllib.request.urlopen(url, timeout=30) as resp:
-    packages = json.load(resp)
-
-versions = []
-for pkg in packages:
-    if pkg.get("name") != "librewolf":
-        continue
-    ver = pkg.get("version") or ""
-    # Prefer full firefox-style versions like 153.0.1-1 over 153.0-3 when both exist.
-    m = re.match(r"^(\d+)\.(\d+)(?:\.(\d+))?-(\d+)$", ver)
-    if not m:
-        continue
-    major, minor, patch, rev = m.groups()
-    versions.append(((int(major), int(minor), int(patch or 0), int(rev)), ver))
-
-if not versions:
-    raise SystemExit("no librewolf package versions found on Codeberg")
-
-versions.sort(reverse=True)
-print(versions[0][1])
-PY
-}
-
-install_librewolf() {
-    echo "Installing LibreWolf from official Codeberg packages..."
-    local tmp ver arch url_base tarball sig
-    tmp=$(mktemp -d)
-    ver=$(latest_librewolf_version)
-    case "$(uname -m)" in
-        x86_64) arch="x86_64" ;;
-        aarch64|arm64) arch="arm64" ;;
-        *)
-            echo "ERROR: Unsupported architecture for LibreWolf: $(uname -m)"
-            exit 1
-            ;;
-    esac
-
-    url_base="https://codeberg.org/api/packages/librewolf/generic/librewolf/${ver}"
-    tarball="librewolf-${ver}-linux-${arch}-package.tar.xz"
-    sig="${tarball}.sig"
-
-    curl -fsSL "${url_base}/${tarball}" -o "$tmp/$tarball"
-    curl -fsSL "${url_base}/${sig}" -o "$tmp/$sig"
-
-    if ! gpg --list-keys 662E3CDD6FE329002D0CA5BB40339DD82B12EF16 >/dev/null 2>&1; then
-        echo "Importing LibreWolf packaging key..."
-        gpg --keyserver hkps://keyserver.ubuntu.com \
-            --recv-keys 662E3CDD6FE329002D0CA5BB40339DD82B12EF16
-    fi
-    gpg --verify "$tmp/$sig" "$tmp/$tarball"
-
-    tar -xJf "$tmp/$tarball" -C "$tmp"
-    sudo rm -rf /usr/lib/librewolf
-    sudo mkdir -p /usr/lib/librewolf
-    sudo cp -a "$tmp/librewolf/." /usr/lib/librewolf/
-
-    sudo tee /usr/bin/librewolf >/dev/null <<'EOF'
-#!/bin/sh
-exec /usr/lib/librewolf/librewolf "$@"
-EOF
-    sudo chmod 755 /usr/bin/librewolf
-    sudo ln -sfr /usr/bin/librewolf /usr/lib/librewolf/librewolf-bin
-
-    # Desktop entry + icons from the bundled chrome icons.
-    sudo tee /usr/share/applications/librewolf.desktop >/dev/null <<'EOF'
-[Desktop Entry]
-Version=1.0
-Name=LibreWolf
-GenericName=Web Browser
-Comment=Privacy-focused Firefox fork
-Exec=librewolf %u
-Icon=librewolf
-Terminal=false
-Type=Application
-MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/vnd.mozilla.xul+xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;
-StartupNotify=true
-Categories=Network;WebBrowser;
-StartupWMClass=librewolf-default
-EOF
-
-    local size
-    for size in 16 32 48 64 128; do
-        if [[ -f /usr/lib/librewolf/browser/chrome/icons/default/default${size}.png ]]; then
-            sudo install -Dm644 \
-                "/usr/lib/librewolf/browser/chrome/icons/default/default${size}.png" \
-                "/usr/share/icons/hicolor/${size}x${size}/apps/librewolf.png"
-        fi
-    done
-    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
-        sudo gtk-update-icon-cache -f /usr/share/icons/hicolor >/dev/null 2>&1 || true
-    fi
-
-    rm -rf "$tmp"
-}
-
 setup_pywalfox() {
     echo "Configuring Pywalfox native messaging host..."
     local pywalfox_bin
@@ -396,8 +261,8 @@ if ! grep -qE '^[[:space:]]*Server[[:space:]]*=' /etc/pacman.d/mirrorlist; then
     exit 1
 fi
 
-echo "Ensuring git, base-devel, curl, and gnupg are installed..."
-sudo pacman -S --needed --noconfirm git base-devel curl gnupg
+echo "Ensuring git, base-devel, and curl are installed..."
+sudo pacman -S --needed --noconfirm git base-devel curl
 
 BUILD_ROOT=$(mktemp -d)
 
@@ -405,9 +270,6 @@ install_pacman_packages
 install_python_packages
 install_getnf
 install_wifitui
-install_scenefx
-install_mangowm
-install_librewolf
 setup_pywalfox
 
 #set fish as system-wide shell and set local/bin path.
