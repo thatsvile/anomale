@@ -130,6 +130,17 @@ animations {
     }
 }
 
+// anomale overlay menus/tray/notifications: compositor blur behind semi-transparent GTK backgrounds
+layer-rule {
+    match namespace="^anomale-(appmenu|powermenu|menu-|tray|notification)$"
+    match layer="overlay"
+
+    background-effect {
+        blur true
+        xray false
+    }
+}
+
 // anomale bars only: no niri blur/shadow (bars draw their own)
 layer-rule {
     match namespace="^anomale-bar$"
