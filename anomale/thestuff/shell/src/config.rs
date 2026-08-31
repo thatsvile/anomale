@@ -479,7 +479,7 @@ impl Default for AppConfig {
             power_actions: vec![
                 ("Reboot".to_string(), "systemctl reboot".to_string()),
                 ("Shutdown".to_string(), "systemctl poweroff".to_string()),
-                ("Logout".to_string(), "mmsg dispatch quit".to_string()),
+                ("Logout".to_string(), "niri msg action quit --skip-confirmation".to_string()),
             ],
             custom_menus: HashMap::new(),
             wallpapers_path: "~/Pictures/wallpapers/".to_string(),

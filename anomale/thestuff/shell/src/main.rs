@@ -6,6 +6,7 @@ mod bar;
 mod config;
 mod layout;
 mod modules;
+mod niri;
 mod watcher;
 mod apps;
 mod action_menu;

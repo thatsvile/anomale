@@ -335,8 +335,8 @@ cp -r "$THE_STUFF/.local/bin/." "$HOME/.local/bin/"
 chmod +x "$HOME/.local/bin/"*
 
 # Ensure NVIDIA/non-NVIDIA start scripts are present before the GPU prompt.
-if [[ ! -f "$HOME/.local/bin/mangowc-start-nvidia.sh" || ! -f "$HOME/.local/bin/mangowc-start-nonvidia.sh" ]]; then
-    echo "ERROR: mangowc start scripts missing from ~/.local/bin after copy."
+if [[ ! -f "$HOME/.local/bin/niri-start-nvidia.sh" || ! -f "$HOME/.local/bin/niri-start-nonvidia.sh" ]]; then
+    echo "ERROR: niri start scripts missing from ~/.local/bin after copy."
     exit 1
 fi
 
@@ -380,15 +380,15 @@ do
     case $opt in
         "YES")
             echo "sorry..."
-            rm -f "$HOME/.local/bin/mangowc-start-nonvidia.sh"
-            mv "$HOME/.local/bin/mangowc-start-nvidia.sh" "$HOME/.local/bin/mangowc-start.sh"
+            rm -f "$HOME/.local/bin/niri-start-nonvidia.sh"
+            mv "$HOME/.local/bin/niri-start-nvidia.sh" "$HOME/.local/bin/niri-start.sh"
             sleep 1
             break 
             ;;
         "NO")
             echo "lucky..."
-            rm -f "$HOME/.local/bin/mangowc-start-nvidia.sh"
-            mv "$HOME/.local/bin/mangowc-start-nonvidia.sh" "$HOME/.local/bin/mangowc-start.sh"
+            rm -f "$HOME/.local/bin/niri-start-nvidia.sh"
+            mv "$HOME/.local/bin/niri-start-nonvidia.sh" "$HOME/.local/bin/niri-start.sh"
             sleep 1
             break
             ;;
@@ -437,15 +437,6 @@ end
 set -Ux TERMINAL foot
 EOF
 clear
-
-mkdir -p "$HOME/.config/systemd/user"
-cat << 'EOF' > "$HOME/.config/systemd/user/mangowm-session.target"
-[Unit]
-Description=MangoWM Session
-BindsTo=graphical-session.target
-Wants=graphical-session-pre.target
-After=graphical-session-pre.target
-EOF
 
 mkdir -p "$HOME/.config/xdg-desktop-portal-wlr"
 cat << 'EOF' > "$HOME/.config/xdg-desktop-portal-wlr/wlroots"
