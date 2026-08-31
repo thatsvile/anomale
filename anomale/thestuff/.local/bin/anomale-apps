@@ -21,7 +21,7 @@ Commands:
 Tracks: Anomale shell (this dots repo, shell path only), wifitui (GitHub releases),
 and the pip packages pywal16 / pywalfox / haishoku / colorz.
 
-LibreWolf and niri install via pacman. Anomale shell lands in ~/.local/bin.
+Anomale shell lands in ~/.local/bin. Arch repo packages update with pacman.
 EOF
 }
 
