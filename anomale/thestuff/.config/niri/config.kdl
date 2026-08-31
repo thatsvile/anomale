@@ -1,5 +1,7 @@
 // Niri config matched to ~/.config/mango/config.conf + anomale integration
 
+include "animations/none.kdl"
+
 input {
     keyboard {
         xkb {

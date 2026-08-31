@@ -1,0 +1,132 @@
+animations {
+    window-open {
+        duration-ms 500
+        curve "cubic-bezier" 0.42 0.0 1.0 1.0
+        custom-shader r"
+            float hash21(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            float block_reveal(vec2 block_id, vec2 block_center, vec3 size_geo, float reveal, float seed) {
+                float wave = sin(block_center.x / 38.0 + seed * 6.283) * 16.0
+                           + sin(block_center.y / 46.0 - seed * 4.712) * 12.0;
+                float sweep = block_center.y + block_center.x * 0.42 + wave;
+                float max_sweep = size_geo.y + size_geo.x * 0.42 + 28.0;
+                float norm_sweep = sweep / max_sweep;
+                float jitter = hash21(block_id + vec2(seed, 17.0)) * 0.10;
+                return step(norm_sweep, reveal * 1.12 + jitter);
+            }
+
+            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+                vec2 uv = coords_geo.xy;
+                float reveal = niri_clamped_progress;
+                float seed = niri_random_seed * 100.0;
+                float min_dim = min(size_geo.x, size_geo.y);
+                float block_size = 14.0;
+                float edge_margin = 30.0;
+
+                float dx = min(uv.x, 1.0 - uv.x) * size_geo.x;
+                float dy = min(uv.y, 1.0 - uv.y) * size_geo.y;
+                float edge_dist = min(dx, dy);
+                if (edge_dist < -min_dim * 0.15) {
+                    return vec4(0.0);
+                }
+
+                float edge_clear = smoothstep(0.0, edge_margin, edge_dist);
+                float pixel_strength = (1.0 - smoothstep(0.42, 0.90, reveal)) * edge_clear;
+
+                vec2 pixel_pos = uv * size_geo.xy;
+                vec2 block_id = floor(pixel_pos / block_size);
+                vec2 block_center = (block_id + 0.5) * block_size;
+                vec2 block_uv = block_center / size_geo.xy;
+
+                float wave_shift = sin(block_center.y / 52.0 + reveal * 9.0 + seed) * 5.0 * (1.0 - reveal) * pixel_strength;
+                block_uv.x += wave_shift / size_geo.x;
+
+                vec3 raw_tex_coords = niri_geo_to_tex * coords_geo;
+                vec4 raw_color = texture2D(niri_tex, raw_tex_coords.st);
+
+                vec3 pixel_tex_coords = niri_geo_to_tex * vec3(block_uv, coords_geo.z);
+                vec4 pixel_color = texture2D(niri_tex, pixel_tex_coords.st);
+                vec4 color = mix(raw_color, pixel_color, pixel_strength);
+
+                float block_mask = block_reveal(block_id, block_center, size_geo, reveal, seed);
+                float dissolve_soften = smoothstep(0.50, 0.92, reveal);
+                float alpha = mix(block_mask, 1.0, dissolve_soften);
+
+                float sweep_line = (block_center.y + block_center.x * 0.42) / (size_geo.y + size_geo.x * 0.42 + 28.0);
+                float glow = (1.0 - block_mask) * smoothstep(reveal - 0.06, reveal + 0.02, reveal * 1.12 - sweep_line + 0.05);
+                glow *= (1.0 - reveal) * 0.85 * pixel_strength;
+                color.rgb += vec3(0.15, 0.55, 0.95) * glow * color.a;
+
+                return color * alpha;
+            }
+        "
+    }
+
+    window-close {
+        duration-ms 500
+        curve "ease-out-quad"
+        custom-shader r"
+            float hash21(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+            }
+
+            float block_reveal(vec2 block_id, vec2 block_center, vec3 size_geo, float reveal, float seed) {
+                float wave = sin(block_center.x / 38.0 + seed * 6.283) * 16.0
+                           + sin(block_center.y / 46.0 - seed * 4.712) * 12.0;
+                float sweep = block_center.y + block_center.x * 0.42 + wave;
+                float max_sweep = size_geo.y + size_geo.x * 0.42 + 28.0;
+                float norm_sweep = sweep / max_sweep;
+                float jitter = hash21(block_id + vec2(seed, 17.0)) * 0.10;
+                return step(norm_sweep, reveal * 1.12 + jitter);
+            }
+
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                vec2 uv = coords_geo.xy;
+                float hide = niri_clamped_progress;
+                float reveal = 1.0 - hide;
+                float seed = niri_random_seed * 100.0;
+                float min_dim = min(size_geo.x, size_geo.y);
+                float block_size = 14.0;
+                float edge_margin = 30.0;
+
+                float dx = min(uv.x, 1.0 - uv.x) * size_geo.x;
+                float dy = min(uv.y, 1.0 - uv.y) * size_geo.y;
+                float edge_dist = min(dx, dy);
+                if (edge_dist < -min_dim * 0.15) {
+                    return vec4(0.0);
+                }
+
+                float edge_clear = smoothstep(0.0, edge_margin, edge_dist);
+                float pixel_strength = smoothstep(0.12, 0.72, hide) * edge_clear;
+
+                vec2 pixel_pos = uv * size_geo.xy;
+                vec2 block_id = floor(pixel_pos / block_size);
+                vec2 block_center = (block_id + 0.5) * block_size;
+                vec2 block_uv = block_center / size_geo.xy;
+
+                float wave_shift = sin(block_center.y / 52.0 + hide * 9.0 + seed) * 5.0 * hide * pixel_strength;
+                block_uv.x += wave_shift / size_geo.x;
+
+                vec3 raw_tex_coords = niri_geo_to_tex * coords_geo;
+                vec4 raw_color = texture2D(niri_tex, raw_tex_coords.st);
+
+                vec3 pixel_tex_coords = niri_geo_to_tex * vec3(block_uv, coords_geo.z);
+                vec4 pixel_color = texture2D(niri_tex, pixel_tex_coords.st);
+                vec4 color = mix(raw_color, pixel_color, pixel_strength);
+
+                float block_mask = block_reveal(block_id, block_center, size_geo, reveal, seed);
+                float dissolve_soften = smoothstep(0.18, 0.70, hide);
+                float alpha = mix(1.0, block_mask, dissolve_soften);
+
+                float sweep_line = (block_center.y + block_center.x * 0.42) / (size_geo.y + size_geo.x * 0.42 + 28.0);
+                float glow = (1.0 - block_mask) * smoothstep(reveal - 0.06, reveal + 0.02, reveal * 1.12 - sweep_line + 0.05);
+                glow *= hide * 0.85 * pixel_strength;
+                color.rgb += vec3(0.95, 0.35, 0.55) * glow * color.a;
+
+                return color * alpha;
+            }
+        "
+    }
+}
