@@ -130,9 +130,9 @@ animations {
     }
 }
 
-// anomale overlay menus/tray/notifications: compositor blur behind semi-transparent GTK backgrounds
+// anomale notifications: compositor blur behind semi-transparent GTK backgrounds
 layer-rule {
-    match namespace="^anomale-(appmenu|powermenu|menu-|tray|notification)$"
+    match namespace="^anomale-notification$"
     match layer="overlay"
 
     background-effect {
@@ -184,6 +184,30 @@ window-rule {
 window-rule {
     match app-id=r#"firefox$"# title="^Picture-in-Picture$"
     open-floating true
+}
+
+// anomale menu popups (toplevel floating windows)
+window-rule {
+    match app-id="^com.jor.anomale$" title="^Anomale Launcher$"
+    open-floating true
+    open-focused true
+    draw-border-with-background false
+    default-floating-position x=0 y=200 relative-to="top"
+    background-effect {
+        blur true
+        xray true
+    }
+}
+
+window-rule {
+    match app-id="^com.jor.anomale$" title="^Anomale (Power Menu|System Tray|Wallpaper Selector|.+ Menu)$"
+    open-floating true
+    open-focused true
+    draw-border-with-background false
+    background-effect {
+        blur true
+        xray true
+    }
 }
 
 window-rule {

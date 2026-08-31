@@ -1,14 +1,20 @@
 use gtk4::prelude::*;
-use gtk4::{Application, ApplicationWindow, Label, ListBox, ListBoxRow, Entry, ScrolledWindow, Orientation, Align, SelectionMode, Image};
-use gtk4_layer_shell::{Layer, LayerShell, Edge, KeyboardMode};
+use gtk4::{Align, Application, ApplicationWindow, Label, ListBox, ListBoxRow, Entry, ScrolledWindow, Orientation, SelectionMode, Image};
 use gtk4::gio;
 use gtk4::glib;
 use crate::config::AppConfig;
+use crate::popup_window::{
+    prepare_popup_window, present_popup, resize_popup_to_content_at, PopupOptions,
+};
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::time::Duration;
 
 const FILTER_DEBOUNCE_MS: u64 = 50;
+/// Visible height for the app results list when searching.
+const APPS_LIST_HEIGHT: i32 = 320;
+/// Match niri `default-floating-position` for the apps launcher popup.
+const APPS_TOP_Y: i32 = 200;
 
 pub struct AppLauncher {
     pub window: ApplicationWindow,
@@ -35,52 +41,41 @@ impl AppLauncher {
             .visible(false) // Initially hidden
             .build();
 
-        // Layer Shell Setup - Full screen overlay
-        window.init_layer_shell();
-        window.set_namespace("anomale-appmenu");
-        window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
-        window.set_exclusive_zone(-1); // Cover everything including the bar
-        
-        // Anchor all edges for full-screen
-        window.set_anchor(Edge::Top, true);
-        window.set_anchor(Edge::Bottom, true);
-        window.set_anchor(Edge::Left, true);
-        window.set_anchor(Edge::Right, true);
+        prepare_popup_window(
+            &window,
+            PopupOptions::from_search_width(config.search_width),
+        );
 
         // Apply CSS (Initial load)
         let css = config.generate_css(None);
         css_provider_ref.load_from_data(&css);
         let css_provider = css_provider_ref.clone();
 
-        // Full-screen overlay container - positions launcher content at top-center
-        let overlay_box = gtk4::Box::builder()
-            .orientation(Orientation::Vertical)
-            .halign(Align::Center)
-            .valign(Align::Fill)
-            .margin_top(200)
-            .vexpand(true)
-            .build();
         window.add_css_class("apps-window");
 
-        // Inner launcher box with border/styling
+        let popup_width = config.search_width + 20;
         let launcher_box = gtk4::Box::builder()
             .orientation(Orientation::Vertical)
             .spacing(0)
-            .vexpand(true)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
-        launcher_box.set_width_request(config.search_width + 10);
+        launcher_box.set_width_request(popup_width);
         launcher_box.add_css_class("launcher-box");
 
         // Results List
         let list_box = ListBox::builder()
             .selection_mode(SelectionMode::Single)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
         list_box.add_css_class("app-list");
 
         // Search Entry
         let search_entry = Entry::builder()
             .placeholder_text("Search apps...")
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
         search_entry.add_css_class("search-entry");
 
@@ -112,7 +107,8 @@ impl AppLauncher {
             .hscrollbar_policy(gtk4::PolicyType::Never)
             .vscrollbar_policy(gtk4::PolicyType::Automatic)
             .child(&list_box)
-            .vexpand(true)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
 
         // Auto-scroll to selected row
@@ -137,8 +133,7 @@ impl AppLauncher {
         scrolled_window.set_visible(false);
 
         launcher_box.append(&scrolled_window);
-        overlay_box.append(&launcher_box);
-        window.set_child(Some(&overlay_box));
+        window.set_child(Some(&launcher_box));
 
         // Load Apps
         let apps = gio::AppInfo::all();
@@ -250,29 +245,41 @@ impl AppLauncher {
         });
         launcher.borrow().window.add_controller(key_controller);
 
-        // Click outside the launcher box to close
-        let click_controller = gtk4::GestureClick::new();
-        let launcher_clone_click = launcher.clone();
-        click_controller.connect_released(move |_, _, x, y| {
-            let launcher = launcher_clone_click.borrow();
-            // Check if click is outside the launcher box area
-            // The overlay_box centers the launcher_box, so we check bounds
-            if let Some(child) = launcher.window.child() {
-                if let Some(overlay) = child.first_child() {
-                    let alloc = overlay.allocation();
-                    let bx = alloc.x() as f64;
-                    let by = alloc.y() as f64;
-                    let bw = alloc.width() as f64;
-                    let bh = alloc.height() as f64;
-                    if x < bx || x > bx + bw || y < by || y > by + bh {
-                        launcher.window.set_visible(false);
-                    }
-                }
+        let launcher_for_hide = launcher.clone();
+        launcher.borrow().window.connect_visible_notify(move |window| {
+            if !window.is_visible() {
+                launcher_for_hide.borrow().reset_to_initial_state();
             }
         });
-        launcher.borrow().window.add_controller(click_controller);
 
         launcher
+    }
+
+    fn reset_to_initial_state(&self) {
+        self.cancel_pending_filter();
+        self.search_entry.set_text("");
+
+        while let Some(child) = self.list_box.first_child() {
+            self.list_box.remove(&child);
+        }
+        self.current_matches.borrow_mut().clear();
+
+        self.scrolled_window.set_visible(false);
+        self.scrolled_window.set_size_request(-1, 0);
+        self.apply_compact_window_size();
+    }
+
+    fn apply_compact_window_size(&self) {
+        if let Some(child) = self.window.child() {
+            let (min_w, nat_w, _, _) = child.measure(Orientation::Horizontal, -1);
+            let (min_h, nat_h, _, _) = child.measure(Orientation::Vertical, -1);
+            let width = nat_w.max(min_w);
+            let height = nat_h.max(min_h);
+            if width > 0 && height > 0 {
+                self.window.set_default_size(width, height);
+                self.window.set_size_request(width, height);
+            }
+        }
     }
 
     pub fn toggle(&self) {
@@ -287,12 +294,12 @@ impl AppLauncher {
 
             // Refresh apps list
             *self.apps.borrow_mut() = gio::AppInfo::all();
-            
-            self.window.set_visible(true);
-            self.search_entry.set_text("");
+
+            // Reset before showing so we never flash the previous search/results size.
+            self.reset_to_initial_state();
+            present_popup(&self.window);
             self.search_entry.grab_focus();
-            self.scrolled_window.set_visible(false);
-            self.scrolled_window.set_size_request(-1, 0);
+            resize_popup_to_content_at(&self.window, Some(APPS_TOP_Y));
         }
     }
 
@@ -337,10 +344,12 @@ impl AppLauncher {
         if query.trim().is_empty() {
             self.scrolled_window.set_visible(false);
             self.scrolled_window.set_size_request(-1, 0);
+            resize_popup_to_content_at(&self.window, Some(APPS_TOP_Y));
             return;
         }
 
         self.scrolled_window.set_visible(true);
+        self.scrolled_window.set_size_request(-1, APPS_LIST_HEIGHT);
 
         let query_lower = query.to_lowercase();
         
@@ -388,6 +397,7 @@ impl AppLauncher {
         if matches.is_empty() {
              self.scrolled_window.set_visible(false);
              self.scrolled_window.set_size_request(-1, 0);
+             resize_popup_to_content_at(&self.window, Some(APPS_TOP_Y));
              return;
         }
 
@@ -432,8 +442,9 @@ impl AppLauncher {
         }
 
         *self.current_matches.borrow_mut() = row_matches;
-        
-        self.scrolled_window.set_size_request(-1, -1);
+
+        self.scrolled_window.set_size_request(-1, APPS_LIST_HEIGHT);
+        resize_popup_to_content_at(&self.window, Some(APPS_TOP_Y));
 
         if let Some(row) = self.list_box.first_child() {
              if let Some(row_widget) = row.downcast_ref::<ListBoxRow>() {

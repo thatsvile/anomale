@@ -1,8 +1,8 @@
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Orientation, Align, Label};
 use gtk4::gdk_pixbuf::Pixbuf;
-use gtk4_layer_shell::{Layer, LayerShell, KeyboardMode};
 use crate::config::{AppConfig, Config};
+use crate::popup_window::{prepare_popup_window, present_popup, PopupOptions};
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::process::Command;
@@ -120,13 +120,10 @@ impl WallpaperMenu {
             .visible(false)
             .build();
 
-        window.init_layer_shell();
-        window.set_namespace("anomale-wallpaper");
-        window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
-        window.set_exclusive_zone(-1);
-        
-        window.set_default_size(config.wallpapers_width, config.wallpapers_height);
+        prepare_popup_window(
+            &window,
+            PopupOptions::sized(config.wallpapers_width, config.wallpapers_height),
+        );
 
         let css = config.generate_css(None);
         css_provider_ref.load_from_data(&css);
@@ -290,7 +287,7 @@ impl WallpaperMenu {
             let bar_shadow_config = Self::find_bar_shadow_config();
             m.css_provider.load_from_data(&config.generate_css(bar_shadow_config.as_ref()));
 
-            m.window.set_visible(true);
+            present_popup(&m.window);
             m.populate_wallpapers(self_rc);
         }
     }

@@ -135,22 +135,25 @@ impl Config {
             "config.conf".to_string()
         };
 
-        // Check current directory first for development convenience (only for default config or specific if present)
+        let xdg_config = std::env::var("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|_| std::env::var("HOME").map(|home| PathBuf::from(home).join(".config")))
+            .context("Could not determine config directory")?;
+
+        let xdg_path = xdg_config.join("anomale").join(&config_filename);
+        if xdg_path.exists() {
+            return Ok(xdg_path);
+        }
+
+        // Dev fallback when no user config exists yet.
         let local_path = PathBuf::from(&config_filename);
         if local_path.exists() {
             println!("DEBUG: Found local config: {:?}", local_path);
             return Ok(fs::canonicalize(local_path)?);
         }
 
-        let xdg_config = std::env::var("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .or_else(|_| std::env::var("HOME").map(|home| PathBuf::from(home).join(".config")))
-            .context("Could not determine config directory")?;
-
-        let full_path = xdg_config.join("anomale").join(&config_filename);
-        println!("DEBUG: Checking config at: {:?}", full_path);
-
-        Ok(full_path)
+        println!("DEBUG: Checking config at: {:?}", xdg_path);
+        Ok(xdg_path)
     }
 
     pub fn load_pywal_colors() -> Option<HashMap<String, String>> {
@@ -808,16 +811,24 @@ impl AppConfig {
             "
             .apps-window {{
                 background-color: alpha({apps_bg}, {apps_op});
+                outline: none;
+                border: none;
+                box-shadow: none;
             }}
 
             .action-menu-window, .power-window {{
                 background-color: alpha({bg}, {power_op});
+                outline: none;
+                border: none;
+                box-shadow: none;
             }}
 
             .wallpaper-window {{
                 background-color: alpha({bg}, {wall_op});
-                border: {bw}px solid {bc};
                 border-radius: {br}px;
+                outline: none;
+                border: none;
+                box-shadow: none;
             }}
     
             .launcher-box {{
@@ -826,6 +837,9 @@ impl AppConfig {
                 font-family: '{font}';
                 font-size: {fsize}px;
                 color: {fg};
+                outline: none;
+                border: none;
+                box-shadow: none;
             }}
     
             scrollbar {{
@@ -854,7 +868,6 @@ impl AppConfig {
                 outline: none;
                 border-radius: {br}px;
                 padding: 5px;
-                margin-right: 10px;
             }}
 
             .search-entry > text, .search-entry entry {{
@@ -880,10 +893,11 @@ impl AppConfig {
                 background-color: transparent;
                 outline: none;
                 margin-top: 10px;
+                margin-bottom: 10px;
             }}
     
             .app-icon {{
-                margin-left: 5px;
+                margin-left: 0;
             }}
     
             row {{
@@ -891,7 +905,6 @@ impl AppConfig {
                 border-radius: {br}px;
                 outline: none;
                 color: {list_fg};
-                margin-right: 10px;
             }}
             
             row:focus {{

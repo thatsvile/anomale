@@ -1,12 +1,12 @@
 use gtk4::prelude::*;
 use gtk4::{Align, Application, ApplicationWindow, Label, ListBox, ListBoxRow, Orientation, SelectionMode};
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::process::Command;
 use std::rc::Rc;
 
 use crate::config::AppConfig;
+use crate::popup_window::{prepare_popup_window, present_popup, resize_popup_to_content, PopupOptions};
 
 pub struct ActionMenu {
     pub window: ApplicationWindow,
@@ -28,26 +28,14 @@ impl ActionMenu {
             .visible(false)
             .build();
 
-        window.init_layer_shell();
-        window.set_namespace(&menu_namespace(menu_id));
-        window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
-        window.set_exclusive_zone(-1);
-
-        window.set_anchor(Edge::Top, true);
-        window.set_anchor(Edge::Bottom, true);
-        window.set_anchor(Edge::Left, true);
-        window.set_anchor(Edge::Right, true);
+        prepare_popup_window(
+            &window,
+            PopupOptions::from_search_width(config.search_width),
+        );
 
         let css = config.generate_css(None);
         css_provider_ref.load_from_data(&css);
         let css_provider = css_provider_ref.clone();
-
-        let overlay_box = gtk4::Box::builder()
-            .orientation(Orientation::Vertical)
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
 
         if menu_id == "power" {
             window.add_css_class("power-window");
@@ -55,21 +43,25 @@ impl ActionMenu {
             window.add_css_class("action-menu-window");
         }
 
+        let popup_width = config.search_width + 20;
         let launcher_box = gtk4::Box::builder()
             .orientation(Orientation::Vertical)
             .spacing(0)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
-        launcher_box.set_width_request(config.search_width + 10);
+        launcher_box.set_width_request(popup_width);
         launcher_box.add_css_class("launcher-box");
 
         let list_box = ListBox::builder()
             .selection_mode(SelectionMode::Single)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
         list_box.add_css_class("app-list");
 
         launcher_box.append(&list_box);
-        overlay_box.append(&launcher_box);
-        window.set_child(Some(&overlay_box));
+        window.set_child(Some(&launcher_box));
 
         let menu = Rc::new(RefCell::new(Self {
             window,
@@ -135,25 +127,6 @@ impl ActionMenu {
         });
         menu.borrow().window.add_controller(key_controller);
 
-        let click_controller = gtk4::GestureClick::new();
-        let menu_clone_click = menu.clone();
-        click_controller.connect_released(move |_, _, x, y| {
-            let menu = menu_clone_click.borrow();
-            if let Some(child) = menu.window.child() {
-                if let Some(overlay) = child.first_child() {
-                    let alloc = overlay.allocation();
-                    let bx = alloc.x() as f64;
-                    let by = alloc.y() as f64;
-                    let bw = alloc.width() as f64;
-                    let bh = alloc.height() as f64;
-                    if x < bx || x > bx + bw || y < by || y > by + bh {
-                        menu.window.set_visible(false);
-                    }
-                }
-            }
-        });
-        menu.borrow().window.add_controller(click_controller);
-
         menu
     }
 
@@ -178,13 +151,15 @@ impl ActionMenu {
             let row_box = gtk4::Box::builder()
                 .orientation(Orientation::Horizontal)
                 .spacing(10)
+                .hexpand(true)
+                .halign(Align::Fill)
                 .build();
 
             let label = Label::new(Some(label_text));
             label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
             label.set_hexpand(true);
             label.set_width_chars(1);
-            label.set_halign(Align::Center);
+            label.set_halign(Align::Fill);
             label.set_xalign(0.5);
             row_box.append(&label);
 
@@ -196,12 +171,15 @@ impl ActionMenu {
 
             self.list_box.append(&row);
         }
+
+        resize_popup_to_content(&self.window);
     }
 
     pub fn show(&self) {
-        self.window.set_visible(true);
+        present_popup(&self.window);
         self.list_box.unselect_all();
         self.list_box.grab_focus();
+        resize_popup_to_content(&self.window);
     }
 
     pub fn toggle_open(&self, config: &AppConfig, actions: &[(String, String)]) {
@@ -269,14 +247,6 @@ impl ActionMenuRegistry {
         let menu = ActionMenu::new(app, css_provider, menu_id);
         menus.insert(menu_id.to_string(), menu.clone());
         menu
-    }
-}
-
-fn menu_namespace(menu_id: &str) -> String {
-    if menu_id == "power" {
-        "anomale-powermenu".to_string()
-    } else {
-        format!("anomale-menu-{}", menu_id)
     }
 }
 

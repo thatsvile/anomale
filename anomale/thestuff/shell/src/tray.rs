@@ -3,7 +3,7 @@ use gtk4::prelude::*;
 use gtk4::{
     Align, Application, ApplicationWindow, Label, ListBox, ListBoxRow, Orientation, SelectionMode,
 };
-use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
+use crate::popup_window::{prepare_popup_window, present_popup, resize_popup_to_content, PopupOptions};
 use nix::sys::signal::{kill, Signal};
 use nix::unistd::Pid;
 use std::cell::RefCell;
@@ -1107,33 +1107,29 @@ impl TrayMenu {
             .decorated(false)
             .visible(false)
             .build();
-        window.init_layer_shell();
-        window.set_namespace("anomale-tray");
-        window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
-        window.set_exclusive_zone(-1);
-        for edge in [Edge::Top, Edge::Bottom, Edge::Left, Edge::Right] {
-            window.set_anchor(edge, true);
-        }
+
+        prepare_popup_window(
+            &window,
+            PopupOptions::from_search_width(config.search_width),
+        );
         window.add_css_class("action-menu-window");
 
-        let overlay = gtk4::Box::builder()
-            .orientation(Orientation::Vertical)
-            .halign(Align::Center)
-            .valign(Align::Center)
-            .build();
+        let popup_width = config.search_width + 20;
         let content = gtk4::Box::builder()
             .orientation(Orientation::Vertical)
-            .width_request(config.search_width + 10)
+            .hexpand(true)
+            .halign(Align::Fill)
+            .width_request(popup_width)
             .build();
         content.add_css_class("launcher-box");
         let list_box = ListBox::builder()
             .selection_mode(SelectionMode::Single)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
         list_box.add_css_class("app-list");
         content.append(&list_box);
-        overlay.append(&content);
-        window.set_child(Some(&overlay));
+        window.set_child(Some(&content));
 
         let menu = Rc::new(RefCell::new(Self {
             window,
@@ -1287,25 +1283,6 @@ impl TrayMenu {
             }
         });
         menu.borrow().window.add_controller(key);
-
-        let click = gtk4::GestureClick::new();
-        let menu_click = menu.clone();
-        click.connect_released(move |_, _, x, y| {
-            let menu = menu_click.borrow();
-            if let Some(overlay) = menu.window.child() {
-                if let Some(content) = overlay.first_child() {
-                    let allocation = content.allocation();
-                    let left = allocation.x() as f64;
-                    let top = allocation.y() as f64;
-                    let right = left + allocation.width() as f64;
-                    let bottom = top + allocation.height() as f64;
-                    if x < left || x > right || y < top || y > bottom {
-                        menu.window.set_visible(false);
-                    }
-                }
-            }
-        });
-        menu.borrow().window.add_controller(click);
         menu.borrow().update(TrayUpdate::Items(Vec::new()));
         menu
     }
@@ -1354,12 +1331,14 @@ impl TrayMenu {
             row.set_child(Some(&Label::new(Some("No tray applications"))));
             self.list_box.append(&row);
             self.row_actions.borrow_mut().push(None);
+            resize_popup_to_content(&self.window);
             return;
         }
 
         for item in items.iter() {
             self.append_row(&item.title, Some(RowAction::Tray(item.id.clone())), true);
         }
+        resize_popup_to_content(&self.window);
     }
 
     fn render_menu_level(&self) {
@@ -1386,17 +1365,22 @@ impl TrayMenu {
             let selectable = action.is_some();
             self.append_row(&label, action, selectable);
         }
+        resize_popup_to_content(&self.window);
     }
 
     fn append_row(&self, text: &str, action: Option<RowAction>, selectable: bool) {
         let row = ListBoxRow::new();
         let row_box = gtk4::Box::builder()
             .orientation(Orientation::Horizontal)
-            .halign(Align::Center)
+            .hexpand(true)
+            .halign(Align::Fill)
             .build();
 
         let label = Label::new(Some(text));
+        label.set_hexpand(true);
+        label.set_halign(Align::Fill);
         label.set_xalign(0.5);
+        label.set_width_chars(1);
         label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         row_box.append(&label);
 
@@ -1455,9 +1439,10 @@ impl TrayMenu {
             *self.pending_tap.borrow_mut() = None;
             self.menu_history.borrow_mut().clear();
             self.render_tray_items();
-            self.window.set_visible(true);
+            present_popup(&self.window);
             self.list_box.unselect_all();
             self.list_box.grab_focus();
+            resize_popup_to_content(&self.window);
         }
     }
 }

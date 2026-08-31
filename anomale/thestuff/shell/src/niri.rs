@@ -5,6 +5,103 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::thread;
 
+#[derive(Debug, Deserialize)]
+struct NiriWindow {
+    id: u64,
+    title: Option<String>,
+    is_floating: bool,
+    layout: NiriWindowLayout,
+}
+
+#[derive(Debug, Deserialize)]
+struct NiriWindowLayout {
+    tile_size: (f64, f64),
+    tile_pos_in_workspace_view: Option<(f64, f64)>,
+}
+
+#[derive(Debug, Deserialize)]
+struct NiriOutputLogical {
+    width: i32,
+}
+
+#[derive(Debug, Deserialize)]
+struct NiriOutput {
+    logical: NiriOutputLogical,
+}
+
+fn run_niri_json<T: for<'de> Deserialize<'de>>(args: &[&str]) -> Option<T> {
+    let output = Command::new("niri").args(args).output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    serde_json::from_slice(&output.stdout).ok()
+}
+
+fn run_niri_action(args: &[&str]) {
+    let _ = Command::new("niri").args(args).spawn();
+}
+
+/// Place a floating window below the top of the workspace, horizontally centered.
+///
+/// Niri's `default-floating-position` only applies on first float; toggling and
+/// resizing popups recenters them, so the shell re-applies this after each layout.
+pub fn position_floating_window_top(title: &str, y: i32) {
+    let windows: Vec<NiriWindow> = match run_niri_json(&["msg", "-j", "windows"]) {
+        Some(windows) => windows,
+        None => return,
+    };
+
+    let window = match windows.iter().find(|window| {
+        window.is_floating && window.title.as_deref() == Some(title)
+    }) {
+        Some(window) => window,
+        None => return,
+    };
+
+    let (current_x, current_y) = match window.layout.tile_pos_in_workspace_view {
+        Some(pos) => pos,
+        None => return,
+    };
+
+    let output: NiriOutput = match run_niri_json(&["msg", "-j", "focused-output"]) {
+        Some(output) => output,
+        None => return,
+    };
+
+    let tile_width = window.layout.tile_size.0;
+    let target_x = (f64::from(output.logical.width) - tile_width) / 2.0;
+    let target_y = f64::from(y);
+    let delta_x = target_x - current_x;
+    let delta_y = target_y - current_y;
+
+    if delta_x.abs() < 0.5 && delta_y.abs() < 0.5 {
+        return;
+    }
+
+    let id = window.id.to_string();
+    let dx = format_floating_delta(delta_x);
+    let dy = format_floating_delta(delta_y);
+    run_niri_action(&[
+        "msg",
+        "action",
+        "move-floating-window",
+        "--id",
+        &id,
+        "--x",
+        &dx,
+        "--y",
+        &dy,
+    ]);
+}
+
+fn format_floating_delta(delta: f64) -> String {
+    if delta >= 0.0 {
+        format!("+{delta:.0}")
+    } else {
+        format!("{delta:.0}")
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct TagState {
     pub selected: bool,

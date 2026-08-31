@@ -15,6 +15,7 @@ mod notify;
 mod notify_server;
 mod notification_window;
 mod tray;
+mod popup_window;
 
 use config::Config;
 use std::rc::Rc;
@@ -79,7 +80,7 @@ fn spawn_restart_process() {
         println!("Spawning new instance: {}", exe_str);
         std::process::Command::new("sh")
             .arg("-c")
-            .arg(format!("sleep 0.5 && {}", exe_str))
+            .arg(format!("cd \"$HOME\" && sleep 0.5 && {}", exe_str))
             .spawn()
             .ok();
     }
