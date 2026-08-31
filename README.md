@@ -1,9 +1,9 @@
 # Anomale
 
-[![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=IXHZVE5SDYE)
+[![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=_Iyf3RlilNw)
 
 Personal Arch Linux dots and a small Wayland shell, built around
-[MangoWM](https://mangowm.github.io) and pywal.
+[niri](https://github.com/YaLTeR/niri) and pywal.
 
 This is software I maintain for my own machines. You can use it if you want.
 It is not a general-purpose desktop, and it is not written with support in mind.
@@ -12,9 +12,9 @@ It is not a general-purpose desktop, and it is not written with support in mind.
 
 Anomale is two pieces that ship together:
 
-1. **Dotfiles** — MangoWM session config, terminal/shell setup (`foot` / `fish`),
+1. **Dotfiles** — niri session config, terminal/shell setup (`foot` / `fish`),
    GTK theming, SDDM theme, and pywal templates that keep colors consistent.
-2. **Anomale Shell** — a thin GTK4 layer-shell interface on top of Mango:
+2. **Anomale Shell** — a thin GTK4 layer-shell interface on top of niri:
    status bar, app launcher, power menu, notifications, system tray, and a
    wallpaper picker that regenerates the pywal theme.
 
@@ -32,9 +32,9 @@ dots.
 | Piece | Role |
 | --- | --- |
 | Arch Linux | Base system (official repos + a few upstream builds; no AUR) |
-| MangoWM | Window manager / compositor |
+| niri | Window manager / compositor |
 | Anomale | Bar, menus, notifications, tray, wallpaper → pywal |
-| pywal16 | Color scheme from wallpaper (terminal, GTK, mango, SDDM, browser) |
+| pywal16 | Color scheme from wallpaper (terminal, GTK, niri, SDDM, browser) |
 | SDDM + Anomalous | Display manager and login theme |
 | foot + fish | Default terminal and shell |
 
@@ -54,16 +54,15 @@ bash anomale/anomale/install.sh
 ```
 
 The script asks for sudo early and keeps it alive. It will also ask whether you
-have an NVIDIA GPU so the Mango session autostart script gets the right
+have an NVIDIA GPU so the niri session autostart script gets the right
 environment. When it finishes, reboot.
 
-What the installer roughly does: installs pacman packages, a few Python tools
-via pip, builds MangoWM (and scenefx) from upstream, builds Anomale, copies
-configs and wallpapers, sets up SDDM, and wires session autostart.
+What the installer roughly does: installs pacman packages (including niri), a few Python tools
+via pip, builds Anomale, copies configs and wallpapers, sets up SDDM, and wires session autostart.
 
 ## Essential keybinds
 
-From `~/.config/mango/config.conf` after install. Super is the Windows/Command key.
+From `~/.config/niri/config.kdl` after install. Super is the Windows/Command key.
 
 | Binding | Action |
 | --- | --- |
@@ -79,7 +78,7 @@ From `~/.config/mango/config.conf` after install. Super is the Windows/Command k
 | `Super` + `a` | Toggle floating |
 | `Alt` + `Tab` | Overview |
 
-The full bind list is in the mango config — edit it there.
+The full bind list is in the niri config — edit it there.
 
 Useful terminal popups bound in the same file: wifi (`wifitui`), `btop`,
 `pulsemixer`, screenshots / short recordings (`mangoshooter` / `mangorecorder`).
@@ -89,8 +88,8 @@ Useful terminal popups bound in the same file: wifi (`wifitui`), `btop`,
 - Log in through SDDM (Anomalous theme).
 - Default terminal is `foot`; shell is `fish`.
 - Wallpapers live in `~/Pictures/wallpaper/`. Picking one through Anomale
-  refreshes pywal colors for terminal, GTK, mango, and the SDDM background.
-- **Mango:** `~/.config/mango/`
+  refreshes pywal colors for terminal, GTK, niri, and the SDDM background.
+- **niri:** `~/.config/niri/`
 - **Anomale:** `~/.config/anomale/` (`config.conf`, `menus.conf`, `notifications.conf`)
 - **pywal templates:** `~/.config/wal/templates/`
 
@@ -109,8 +108,7 @@ anomale-apps update   # update what is behind
 It tracks:
 
 - **Anomale shell** (rebuild from this repo’s `shell/` tree → `~/.local/bin/anomale`)
-- **MangoWM** and **scenefx** (build from GitHub)
-- **LibreWolf** (official Codeberg packages; profiles in `~/.librewolf` are left alone)
+- **LibreWolf** and **niri** (official Arch packages; LibreWolf profiles in `~/.librewolf` are left alone)
 - **wifitui** (GitHub releases)
 - **pip:** pywal16, pywalfox, haishoku, colorz
 

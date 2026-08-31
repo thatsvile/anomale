@@ -176,7 +176,7 @@ echo -e "\033[0m"
 sleep 0.5
 
 cat << "EOF"
-Expanding on the philosophy that mangowm offers, anomale shell does **not** include 
+Expanding on the philosophy that niri offers, anomale shell does **not** include 
 a suite of widgets and apps that create a complete desktop environment. 
 Instead, it provides a minimal, lightweight, and functional interface 
 that provides basic information and wallpaper chooser with 
