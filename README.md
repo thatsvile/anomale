@@ -1,6 +1,6 @@
 # Anomale
 
-[![Watch the example video](https://i.postimg.cc/28XHGczx/image-2.png)](https://www.youtube.com/watch?v=_Iyf3RlilNw)
+[![Watch the example video](https://img.youtube.com/vi/_Iyf3RlilNw/maxresdefault.jpg)](https://www.youtube.com/watch?v=_Iyf3RlilNw)
 
 Personal Arch Linux dots and a small Wayland shell, built around
 [niri](https://github.com/YaLTeR/niri) and pywal.
