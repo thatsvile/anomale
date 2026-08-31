@@ -3,35 +3,35 @@
 
 layout {
     focus-ring {
-        active-color "#{color6}"
-        inactive-color "#{color0}"
-        urgent-color "#{color1}"
+        active-color "{color6}"
+        inactive-color "{color0}"
+        urgent-color "{color1}"
     }
 
     border {
-        active-color "#{color6}"
-        inactive-color "#{color0}"
-        urgent-color "#{color1}"
+        active-color "{color6}"
+        inactive-color "{color0}"
+        urgent-color "{color1}"
     }
 
     shadow {
-        color "#{color0}80"
+        color "{color0}80"
     }
 
     tab-indicator {
-        active-color "#{color6}"
-        inactive-color "#{color0}"
-        urgent-color "#{color1}"
+        active-color "{color6}"
+        inactive-color "{color0}"
+        urgent-color "{color1}"
     }
 
     insert-hint {
-        color "#{color6}80"
+        color "{color6}80"
     }
 }
 
 overview {
-    backdrop-color "#{color0}"
+    backdrop-color "{color0}"
     workspace-shadow {
-        color "#{color0}50"
+        color "{color0}50"
     }
 }
