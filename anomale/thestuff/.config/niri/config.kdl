@@ -105,15 +105,6 @@ prefer-no-csd
 screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 animations {
-    window-open {
-        duration-ms 300
-        curve "cubic-bezier" 0.46 1.0 0.29 1
-    }
-
-    window-close {
-        duration-ms 400
-        curve "cubic-bezier" 0.08 0.92 0 1
-    }
 
     horizontal-view-movement {
         spring damping-ratio=1.0 stiffness=800 epsilon=0.0001
