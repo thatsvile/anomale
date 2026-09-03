@@ -121,7 +121,7 @@ fn setup_panic_hook() {
 
 fn refresh_menu_css(provider: &gtk4::CssProvider) {
     let menus_config = config::AppConfig::load().unwrap_or_default();
-    provider.load_from_data(&menus_config.generate_css(None));
+    provider.load_from_data(&menus_config.generate_css());
 }
 
 fn refresh_css(
@@ -265,7 +265,6 @@ async fn main() -> anyhow::Result<()> {
         let mut exec_commands = HashSet::new();
         let mut exec_once_commands = HashSet::new();
 
-        // Debug: List config directory
         if let Ok(config_path) = Config::get_config_path(None) {
             if let Some(parent) = config_path.parent() {
                 println!("DEBUG: Listing config directory: {:?}", parent);
@@ -347,7 +346,7 @@ async fn main() -> anyhow::Result<()> {
         let menu_css_provider = gtk4::CssProvider::new();
         // Load initial CSS
         let menus_config = config::AppConfig::load().unwrap_or_default();
-        menu_css_provider.load_from_data(&menus_config.generate_css(None));
+        menu_css_provider.load_from_data(&menus_config.generate_css());
         
         gtk4::style_context_add_provider_for_display(
             &gtk4::gdk::Display::default().expect("Could not get default display"),

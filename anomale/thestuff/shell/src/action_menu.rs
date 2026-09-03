@@ -33,7 +33,7 @@ impl ActionMenu {
             PopupOptions::from_search_width(config.search_width),
         );
 
-        let css = config.generate_css(None);
+        let css = config.generate_css();
         css_provider_ref.load_from_data(&css);
         let css_provider = css_provider_ref.clone();
 
@@ -139,7 +139,7 @@ impl ActionMenu {
     }
 
     pub fn reload(&self, config: &AppConfig, actions: &[(String, String)]) {
-        self.css_provider.load_from_data(&config.generate_css(None));
+        self.css_provider.load_from_data(&config.generate_css());
 
         while let Some(row) = self.list_box.row_at_index(0) {
             self.list_box.remove(&row);

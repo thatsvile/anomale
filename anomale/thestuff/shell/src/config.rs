@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::PathBuf;
 
@@ -32,12 +32,6 @@ pub struct Config {
     pub volume_scroll_speed: f64,
     pub degree_symbol_font: Option<String>,
     pub charge_color: String,
-    pub shadow_size: i32,
-    pub shadow_blur: i32,
-    pub shadow_offset_x: i32,
-    pub shadow_offset_y: i32,
-    pub shadow_color: String,
-    pub shadow_opacity: f64,
 }
 
 impl Default for Config {
@@ -70,12 +64,6 @@ impl Default for Config {
             volume_scroll_speed: 5.0,
             degree_symbol_font: None,
             charge_color: "#00ff00ff".to_string(),
-            shadow_size: 0,
-            shadow_blur: 0,
-            shadow_offset_x: 0,
-            shadow_offset_y: 0,
-            shadow_color: "#00000040".to_string(),
-            shadow_opacity: 1.0,
         }
     }
 }
@@ -191,37 +179,6 @@ impl Config {
             }
         }
         value.to_string()
-    }
-
-    /// Apply an opacity multiplier (0.0–1.0) to a hex color string.
-    /// Handles #RGB, #RRGGBB, and #RRGGBBAA formats.
-    /// Returns #RRGGBBAA with alpha = existing_alpha * opacity.
-    pub fn apply_opacity_to_hex(hex: &str, opacity: f64) -> String {
-        let h = hex.trim_start_matches('#');
-        let (r, g, b, a) = match h.len() {
-            3 => {
-                let r = u8::from_str_radix(&h[0..1], 16).unwrap_or(0) * 17;
-                let g = u8::from_str_radix(&h[1..2], 16).unwrap_or(0) * 17;
-                let b = u8::from_str_radix(&h[2..3], 16).unwrap_or(0) * 17;
-                (r, g, b, 255u8)
-            }
-            6 => {
-                let r = u8::from_str_radix(&h[0..2], 16).unwrap_or(0);
-                let g = u8::from_str_radix(&h[2..4], 16).unwrap_or(0);
-                let b = u8::from_str_radix(&h[4..6], 16).unwrap_or(0);
-                (r, g, b, 255u8)
-            }
-            8 => {
-                let r = u8::from_str_radix(&h[0..2], 16).unwrap_or(0);
-                let g = u8::from_str_radix(&h[2..4], 16).unwrap_or(0);
-                let b = u8::from_str_radix(&h[4..6], 16).unwrap_or(0);
-                let a = u8::from_str_radix(&h[6..8], 16).unwrap_or(255);
-                (r, g, b, a)
-            }
-            _ => return hex.to_string(), // Can't parse, return as-is
-        };
-        let new_alpha = ((a as f64) * opacity.clamp(0.0, 1.0)).round() as u8;
-        format!("#{:02x}{:02x}{:02x}{:02x}", r, g, b, new_alpha)
     }
 
     fn apply_execs(&mut self, content: &str) {
@@ -387,34 +344,6 @@ impl Config {
         if let Some(val) = properties.get("charge_color") {
             self.charge_color = Self::resolve_color(val, &pywal_colors);
         }
-        if let Some(val) = properties.get("shadow_size") {
-            if let Ok(v) = val.parse() {
-                self.shadow_size = v;
-            }
-        }
-        if let Some(val) = properties.get("shadow_blur") {
-            if let Ok(v) = val.parse() {
-                self.shadow_blur = v;
-            }
-        }
-        if let Some(val) = properties.get("shadow_offset_x") {
-            if let Ok(v) = val.parse() {
-                self.shadow_offset_x = v;
-            }
-        }
-        if let Some(val) = properties.get("shadow_offset_y") {
-            if let Ok(v) = val.parse() {
-                self.shadow_offset_y = v;
-            }
-        }
-        if let Some(val) = properties.get("shadow_color") {
-            self.shadow_color = Self::resolve_color(val, &pywal_colors);
-        }
-        if let Some(val) = properties.get("shadow_opacity") {
-            if let Ok(v) = val.parse::<f64>() {
-                self.shadow_opacity = v.clamp(0.0, 1.0);
-            }
-        }
     }
 }
 
@@ -448,6 +377,9 @@ pub struct AppConfig {
     pub wallpapers_path: String,
     pub wallpapers_thumb_size: i32,
     pub wallpapers_command: String,
+    pub wallpaper_commands: BTreeMap<String, String>,
+    pub wallpaper_command_default: Option<String>,
+    pub wallpaper_command_post: Option<String>,
     pub use_last_wall: bool,
     pub wallpapers_width: i32,
     pub wallpapers_height: i32,
@@ -488,6 +420,9 @@ impl Default for AppConfig {
             wallpapers_path: "~/Pictures/wallpapers/".to_string(),
             wallpapers_thumb_size: 200,
             wallpapers_command: "wal --backend haishoku -i [[w]]".to_string(),
+            wallpaper_commands: BTreeMap::new(),
+            wallpaper_command_default: None,
+            wallpaper_command_post: None,
             use_last_wall: false,
             wallpapers_width: 800,
             wallpapers_height: 600,
@@ -697,6 +632,23 @@ impl AppConfig {
         if let Some(val) = properties.get("wallpapers_command") {
             self.wallpapers_command = val.to_string();
         }
+        if let Some(val) = properties.get("wallpaper_command_default") {
+            self.wallpaper_command_default = Some(val.to_string());
+        }
+        if let Some(val) = properties.get("wallpaper_command_post") {
+            self.wallpaper_command_post = Some(val.to_string());
+        }
+        const WALLPAPER_CMD_SUFFIX: &str = "_wallpaper_command";
+        self.wallpaper_commands.clear();
+        for (key, value) in &properties {
+            if key.ends_with(WALLPAPER_CMD_SUFFIX) && *key != "wallpapers_command" {
+                let name = &key[..key.len() - WALLPAPER_CMD_SUFFIX.len()];
+                if !name.is_empty() {
+                    self.wallpaper_commands
+                        .insert(name.to_string(), value.to_string());
+                }
+            }
+        }
         if let Some(val) = properties.get("use_last_wall") {
             self.use_last_wall = val.eq_ignore_ascii_case("true");
         }
@@ -763,37 +715,47 @@ impl AppConfig {
             .unwrap_or(false)
     }
 
-    pub fn generate_css(&self, bar_config: Option<&Config>) -> String {
-        // Generate wallpaper-window shadow CSS from bar config if available
-        let wallpaper_shadow_css = if let Some(bc) = bar_config {
-            let has_shadow = bc.shadow_size > 0
-                || bc.shadow_blur > 0
-                || bc.shadow_offset_x != 0
-                || bc.shadow_offset_y != 0;
-            if has_shadow {
-                let effective_color =
-                    Config::apply_opacity_to_hex(&bc.shadow_color, bc.shadow_opacity);
-                // Margin so the shadow has room to render inside the transparent window
-                let margin_top = 0i32.max(bc.shadow_size - bc.shadow_offset_y) + bc.shadow_blur;
-                let margin_bottom = 0i32.max(bc.shadow_size + bc.shadow_offset_y) + bc.shadow_blur;
-                let margin_left = 0i32.max(bc.shadow_size - bc.shadow_offset_x) + bc.shadow_blur;
-                let margin_right = 0i32.max(bc.shadow_size + bc.shadow_offset_x) + bc.shadow_blur;
-                format!(
-                    "\n            .wallpaper-window {{\n                box-shadow: {}px {}px {}px {}px {};\n                margin: {}px {}px {}px {}px;\n            }}",
-                    bc.shadow_offset_x,
-                    bc.shadow_offset_y,
-                    bc.shadow_blur,
-                    bc.shadow_size,
-                    effective_color,
-                    margin_top, margin_right, margin_bottom, margin_left
-                )
-            } else {
-                String::new()
+    /// Returns the name of the default named wallpaper command, if any are configured.
+    pub fn default_wallpaper_command_name(&self) -> Option<String> {
+        if self.wallpaper_commands.is_empty() {
+            return None;
+        }
+        if let Some(ref default) = self.wallpaper_command_default {
+            if self.wallpaper_commands.contains_key(default) {
+                return Some(default.clone());
             }
-        } else {
-            String::new()
-        };
+            eprintln!(
+                "Warning: wallpaper_command_default '{}' not found in named commands, using first available",
+                default
+            );
+        }
+        self.wallpaper_commands.keys().next().cloned()
+    }
 
+    /// Resolves a command template for the given named command, or the default/legacy command.
+    pub fn wallpaper_command_template(&self, command_name: Option<&str>) -> String {
+        if let Some(name) = command_name {
+            if let Some(cmd) = self.wallpaper_commands.get(name) {
+                return cmd.clone();
+            }
+            eprintln!(
+                "Warning: wallpaper command '{}' not found, falling back to default",
+                name
+            );
+        }
+        if let Some(default_name) = self.default_wallpaper_command_name() {
+            if let Some(cmd) = self.wallpaper_commands.get(&default_name) {
+                return cmd.clone();
+            }
+        }
+        self.wallpapers_command.clone()
+    }
+
+    pub fn has_named_wallpaper_commands(&self) -> bool {
+        !self.wallpaper_commands.is_empty()
+    }
+
+    pub fn generate_css(&self) -> String {
         let apps_bg = self
             .apps_background_color
             .as_deref()
@@ -823,12 +785,18 @@ impl AppConfig {
                 box-shadow: none;
             }}
 
+            .wallpaper-popup {{
+                background-color: alpha({bg}, {wall_op});
+            }}
+
             .wallpaper-window {{
                 background-color: alpha({bg}, {wall_op});
                 border-radius: {br}px;
                 outline: none;
                 border: none;
                 box-shadow: none;
+                margin: 0;
+                padding: 0;
             }}
     
             .launcher-box {{
@@ -956,7 +924,65 @@ impl AppConfig {
                 background-color: {sel};
             }}
 
-            {wallpaper_shadow}
+            .wallpaper-cmd-view {{
+                background-color: transparent;
+                padding: 0;
+                margin: 0;
+                box-shadow: none;
+                outline: none;
+                border: none;
+            }}
+
+            button.wallpaper-cmd-back {{
+                background: transparent;
+                color: {fg};
+                font-family: {font};
+                font-size: {fsize}px;
+                padding: 10px 12px;
+                min-width: 0;
+                min-height: 0;
+                box-shadow: none;
+                outline: none;
+                border: none;
+            }}
+
+            button.wallpaper-cmd-back:hover {{
+                background-color: alpha({sel}, 0.3);
+                color: {hlfg};
+            }}
+
+            button.wallpaper-cmd-option {{
+                border-radius: 0;
+                background: transparent;
+                color: {fg};
+                font-family: {font};
+                font-size: {fsize}px;
+                padding: 10px 16px;
+                min-height: 0;
+                box-shadow: none;
+                outline: none;
+                border: none;
+                border-bottom: 1px solid alpha({bc}, 0.3);
+            }}
+
+            button.wallpaper-cmd-option:hover {{
+                background-color: alpha({sel}, 0.5);
+                color: {hlfg};
+            }}
+
+            button.wallpaper-cmd-option.selected {{
+                background-color: alpha({sel}, 0.5);
+                color: {hlfg};
+            }}
+
+            button.wallpaper-cmd-option:focus,
+            button.wallpaper-cmd-option:focus-visible,
+            button.wallpaper-cmd-option.selected:focus {{
+                outline: none;
+                box-shadow: none;
+                border: none;
+                border-bottom: 1px solid alpha({bc}, 0.3);
+            }}
             ",
             bg = self.background_color,
             bw = self.border_width,
@@ -969,7 +995,6 @@ impl AppConfig {
             list_fg = self.list_text_color,
             hl = self.highlight_color,
             hlfg = self.highlight_text_color,
-            wallpaper_shadow = wallpaper_shadow_css
         )
     }
 }
@@ -982,8 +1007,7 @@ pub struct NotifyConfig {
     pub spacing: i32,
     pub corner: String,
     pub timeout: i32,
-    /// Optional output connector name (e.g. "DP-1", "HDMI-A-1").
-    /// When set, notifications target that monitor instead of the default primary.
+    pub animation_ms: u64,
     pub monitor: Option<String>,
     pub pywal: bool,
     pub background_color: String,
@@ -1005,6 +1029,7 @@ impl Default for NotifyConfig {
             spacing: 10,
             corner: "bottom-right".to_string(),
             timeout: 2,
+            animation_ms: 200,
             monitor: None,
             pywal: false,
             background_color: "#1e1e2eff".to_string(),
@@ -1106,6 +1131,11 @@ impl NotifyConfig {
                 self.timeout = v;
             }
         }
+        if let Some(val) = properties.get("animation_ms") {
+            if let Ok(v) = val.parse() {
+                self.animation_ms = v;
+            }
+        }
         if let Some(val) = properties.get("monitor") {
             let name = val.trim();
             if !name.is_empty() {
@@ -1194,6 +1224,7 @@ impl NotifyConfig {
                 font-family: '{font}';
                 font-size: {fsize}px;
                 padding: 15px;
+                box-shadow: none;
             }}
 
             .notification-summary {{
@@ -1401,7 +1432,7 @@ mod tests {
         config.search_background_color = Some("#333333ff".to_string());
         config.search_background_opacity = Some(0.9);
 
-        let css = config.generate_css(None);
+        let css = config.generate_css();
         assert!(
             css.contains("alpha(#222222ff, 0.3)"),
             "Apps backdrop should use apps_background_color and apps_opacity"
@@ -1412,7 +1443,7 @@ mod tests {
         );
 
         let default_config = AppConfig::default();
-        let default_css = default_config.generate_css(None);
+        let default_css = default_config.generate_css();
         assert!(
             default_css.contains(&format!(
                 "alpha({}, {})",

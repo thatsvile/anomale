@@ -1099,7 +1099,7 @@ impl TrayMenu {
         command_tx: Sender<TrayCommand>,
     ) -> Rc<RefCell<Self>> {
         let config = crate::config::AppConfig::load().unwrap_or_default();
-        css_provider.load_from_data(&config.generate_css(None));
+        css_provider.load_from_data(&config.generate_css());
 
         let window = ApplicationWindow::builder()
             .application(app)

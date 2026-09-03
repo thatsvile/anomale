@@ -47,7 +47,7 @@ impl AppLauncher {
         );
 
         // Apply CSS (Initial load)
-        let css = config.generate_css(None);
+        let css = config.generate_css();
         css_provider_ref.load_from_data(&css);
         let css_provider = css_provider_ref.clone();
 
@@ -290,7 +290,7 @@ impl AppLauncher {
         } else {
             // Refresh CSS from config (picks up pywal changes)
             let config = AppConfig::load().unwrap_or_default();
-            self.css_provider.load_from_data(&config.generate_css(None));
+            self.css_provider.load_from_data(&config.generate_css());
 
             // Refresh apps list
             *self.apps.borrow_mut() = gio::AppInfo::all();

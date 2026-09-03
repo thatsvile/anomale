@@ -13,8 +13,9 @@ pub struct NotifyManager {
     config: RefCell<NotifyConfig>,
     id_counter: std::sync::atomic::AtomicU32,
     events_tx: Sender<NotifyEvent>,
-    /// When false, D-Bus Notify still succeeds but popups are not shown.
     enabled: RefCell<bool>,
+    css_provider: RefCell<Option<gtk4::CssProvider>>,
+    last_notification_css: RefCell<String>,
 }
 
 impl NotifyManager {
@@ -28,11 +29,12 @@ impl NotifyManager {
             id_counter: std::sync::atomic::AtomicU32::new(1),
             events_tx,
             enabled: RefCell::new(true),
+            css_provider: RefCell::new(None),
+            last_notification_css: RefCell::new(String::new()),
         })
     }
 
-    /// Enable or disable popup display without restarting. Turning off dismisses
-    /// any currently visible notifications.
+    /// Enable or disable popup display without restarting.
     pub fn set_enabled(self: &Rc<Self>, enabled: bool) {
         let was_enabled = *self.enabled.borrow();
         *self.enabled.borrow_mut() = enabled;
@@ -62,6 +64,29 @@ impl NotifyManager {
         }
     }
 
+    fn apply_notification_css(self: &Rc<Self>, config: &NotifyConfig) {
+        let css = config.generate_css();
+        if *self.last_notification_css.borrow() == css {
+            return;
+        }
+        *self.last_notification_css.borrow_mut() = css.clone();
+
+        let mut store = self.css_provider.borrow_mut();
+        if store.is_none() {
+            let provider = gtk4::CssProvider::new();
+            if let Some(display) = gtk4::gdk::Display::default() {
+                gtk4::style_context_add_provider_for_display(
+                    &display,
+                    &provider,
+                    gtk4::STYLE_PROVIDER_PRIORITY_USER,
+                );
+            }
+            *store = Some(provider);
+        }
+        if let Some(provider) = store.as_ref() {
+            provider.load_from_data(&css);
+        }
+    }
     fn resolve_monitor(&self, config: &NotifyConfig) -> Option<gtk4::gdk::Monitor> {
         let display = gtk4::gdk::Display::default()?;
         let monitors = display.monitors();
@@ -105,27 +130,24 @@ impl NotifyManager {
                     self.id_counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
                 };
 
-                // Still acknowledge the notification so clients don't hang,
-                // but skip the popup while muted (e.g. streaming).
                 if !*self.enabled.borrow() {
                     let _ = id_sender.send(id);
                     return;
                 }
 
-                // Filter out if ID already exists (replacement logic)
                 self.remove_notification(id);
 
                 let mut config = self.config.borrow().clone();
-                
-                // Urgency hint handling (1 = low, 2 = normal, 3 = critical)
+
                 if let Some(urgency) = hints.get("urgency").and_then(|v| v.downcast_ref::<u8>().ok()) {
                     if urgency == 3 {
-                        // Make border red for critical notifications
                         config.border_color = "#ff0000".to_string();
                     }
                 }
 
                 let monitor = self.resolve_monitor(&config);
+
+                self.apply_notification_css(&config);
 
                 let notify_win = NotificationWindow::new(
                     &self.app,
@@ -138,21 +160,8 @@ impl NotifyManager {
                     monitor.as_ref(),
                 );
 
-                // Add to active
                 self.active_notifications.borrow_mut().insert(0, notify_win.clone());
-                
-                // Apply CSS globally to the display so it reaches all notification widgets
-                let css_provider = gtk4::CssProvider::new();
-                css_provider.load_from_data(&self.config.borrow().generate_css());
-                if let Some(display) = gtk4::gdk::Display::default() {
-                    gtk4::style_context_add_provider_for_display(
-                        &display,
-                        &css_provider,
-                        gtk4::STYLE_PROVIDER_PRIORITY_USER,
-                    );
-                }
 
-                // Setup interactions
                 let gesture = gtk4::GestureClick::new();
                 let id_clone = id;
                 let tx_clone = self.events_tx.clone();
@@ -161,7 +170,6 @@ impl NotifyManager {
                 });
                 notify_win.window.add_controller(gesture);
 
-                // Set timeout for removal
                 let manager_clone = self.clone();
                 let timeout_ms = if expire_timeout > 0 {
                     expire_timeout as u32
@@ -173,10 +181,7 @@ impl NotifyManager {
                     manager_clone.dismiss_notification(id);
                 });
 
-                // Update all positions
                 self.update_positions();
-
-                // Show
                 notify_win.show();
 
                 let _ = id_sender.send(id);
@@ -198,21 +203,20 @@ impl NotifyManager {
 
     fn dismiss_notification(self: &Rc<Self>, id: u32) {
         let n: Option<Rc<NotificationWindow>> = {
-            let active = self.active_notifications.borrow();
-            active.iter().find(|n| n.id == id).cloned()
+            let mut active = self.active_notifications.borrow_mut();
+            if let Some(pos) = active.iter().position(|n| n.id == id) {
+                Some(active.remove(pos))
+            } else {
+                None
+            }
         };
 
         if let Some(n) = n {
-            let manager_clone = self.clone();
+            self.update_positions();
+
             let tx_clone = self.events_tx.clone();
             n.hide(move || {
-                let mut active = manager_clone.active_notifications.borrow_mut();
-                if let Some(pos) = active.iter().position(|anim_n| anim_n.id == id) {
-                    active.remove(pos);
-                }
-                drop(active); // Drop borrow before calling update_positions
-                manager_clone.update_positions();
-                let _ = tx_clone.send_blocking(NotifyEvent::NotificationClosed(id, 2)); // 2 = expired
+                let _ = tx_clone.send_blocking(NotifyEvent::NotificationClosed(id, 2));
             });
         }
     }

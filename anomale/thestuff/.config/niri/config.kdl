@@ -123,10 +123,17 @@ animations {
     }
 }
 
-// anomale notifications: compositor blur behind semi-transparent GTK backgrounds
 layer-rule {
     match namespace="^anomale-notification$"
     match layer="overlay"
+
+    shadow {
+        on
+        softness 1
+        spread 0
+        offset x=4 y=4
+    }
+    geometry-corner-radius 16
 
     background-effect {
         blur true
@@ -134,17 +141,18 @@ layer-rule {
     }
 }
 
-// anomale bars only: no niri blur/shadow (bars draw their own)
 layer-rule {
     match namespace="^anomale-bar$"
-
+    shadow {
+        on
+        softness 1
+        spread 0
+        offset x=4 y=4
+    }
+    geometry-corner-radius 16
     background-effect {
         blur false
         xray false
-    }
-
-    shadow {
-        off
     }
 }
 

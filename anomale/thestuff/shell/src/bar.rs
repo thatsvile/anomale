@@ -62,23 +62,8 @@ pub fn create_bar(app: &Application, monitor: &gtk4::gdk::Monitor, config: &Conf
     let monitor_name = monitor.connector().map(|s| s.to_string());
     let css = generate_css(config, monitor_name.as_deref());
     css_provider.load_from_data(&css);
-    
-    // Compute shadow space needed for the window surface
-    let has_shadow = config.shadow_size > 0 || config.shadow_blur > 0
-        || config.shadow_offset_x != 0 || config.shadow_offset_y != 0;
 
-    let (shadow_pad_top, shadow_pad_bottom) = if has_shadow {
-        let pt = 0.max(config.shadow_size - config.shadow_offset_y);
-        let pb = 0.max(config.shadow_size + config.shadow_offset_y);
-        (pt, pb)
-    } else {
-        (0, 0)
-    };
-    let blur_space = if has_shadow { config.shadow_blur } else { 0 };
-
-    // Height = bar content + shadow padding + blur margins
-    let total_height = config.bar_height + shadow_pad_top + shadow_pad_bottom + 2 * blur_space;
-    window.set_height_request(total_height);
+    window.set_height_request(config.bar_height);
 
     // Try to load user style.css
     if let Ok(config_path) = crate::config::Config::get_config_path(monitor.connector().as_deref()) {
@@ -102,19 +87,7 @@ pub fn create_bar(app: &Application, monitor: &gtk4::gdk::Monitor, config: &Conf
 
     // Create layout
     let content = layout::create_layout(config, monitor);
-
-    if has_shadow {
-        // Wrap bar content in a shadow container.
-        // The shadow is the wrapper's background color peeking through
-        // padding around the bar content — no CSS box-shadow needed for
-        // the core shadow shape, so it works with 0 blur / 0 spread.
-        let shadow_wrapper = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
-        shadow_wrapper.set_widget_name("bar-shadow");
-        shadow_wrapper.append(&content);
-        window.set_child(Some(&shadow_wrapper));
-    } else {
-        window.set_child(Some(&content));
-    }
+    window.set_child(Some(&content));
 
     window.present();
     
@@ -175,47 +148,6 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
         (0, 0, 0, 0)
     };
 
-    // Shadow wrapper CSS
-    // The shadow is rendered as a colored wrapper behind the bar content.
-    // Padding on the wrapper = where the shadow color peeks through.
-    // For blur > 0, we add a CSS box-shadow on the wrapper for the soft edge,
-    // plus margin to give the blur room to render.
-    let has_shadow = config.shadow_size > 0 || config.shadow_blur > 0
-        || config.shadow_offset_x != 0 || config.shadow_offset_y != 0;
-
-    let shadow_wrapper_css = if has_shadow {
-        // Apply shadow_opacity to the shadow color
-        let effective_shadow_color = Config::apply_opacity_to_hex(&config.shadow_color, config.shadow_opacity);
-
-        // The wrapper just provides transparent padding so the layer-shell
-        // surface is large enough for the shadow to render without clipping.
-        let space_top = 0i32.max(config.shadow_size - config.shadow_offset_y) + config.shadow_blur;
-        let space_bottom = 0i32.max(config.shadow_size + config.shadow_offset_y) + config.shadow_blur;
-        let space_left = 0i32.max(config.shadow_size - config.shadow_offset_x) + config.shadow_blur;
-        let space_right = 0i32.max(config.shadow_size + config.shadow_offset_x) + config.shadow_blur;
-
-        // The actual shadow is a CSS box-shadow on #bar-content.
-        // box-shadow respects border-radius, so rounded corners look correct.
-        format!(
-            "#bar-shadow {{
-            background-color: transparent;
-            padding: {}px {}px {}px {}px;
-        }}
-
-        #bar-content {{
-            box-shadow: {}px {}px {}px {}px {};
-        }}",
-            space_top, space_right, space_bottom, space_left,
-            config.shadow_offset_x,
-            config.shadow_offset_y,
-            config.shadow_blur,
-            config.shadow_size,
-            effective_shadow_color
-        )
-    } else {
-        String::new()
-    };
-
     format!(
         "{18} {{
             --bar-bg: {0};
@@ -246,6 +178,7 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
             border-style: solid;
             border-width: var(--border-width);
             border-color: var(--border-color);
+            box-shadow: none;
         }}
 
         {18} label {{
@@ -257,8 +190,7 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
         {10}
         {11}
         {19}
-        {20}
-        {21}",
+        {20}",
         bar_color,                                          // 0
         config.font_family,                                 // 1
         config.font_color,                                  // 2
@@ -280,6 +212,5 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
         bar_class,                                          // 18
         include_str!("modules/resources/style.css"),         // 19
         include_str!("modules/battery/style.css"),           // 20
-        shadow_wrapper_css,                                  // 21
     )
 }
