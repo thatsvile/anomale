@@ -263,6 +263,228 @@ enable_librewolf_repo() {
     fi
 }
 
+# Ensure base Debian sources expose firmware/driver components.
+ensure_debian_nonfree_components() {
+    local f changed=0
+    echo "Ensuring contrib / non-free / non-free-firmware apt components..."
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+        [[ -e "$f" ]] || continue
+        [[ "$(basename "$f")" == cuda-* ]] && continue
+        if grep -qE '^[[:space:]]*Components:' "$f" 2>/dev/null; then
+            if grep -qE '^[[:space:]]*Components:.*\bmain\b' "$f" \
+                && ! grep -qE '^[[:space:]]*Components:.*\bnon-free-firmware\b' "$f"; then
+                sudo sed -i -E \
+                    's/^([[:space:]]*Components:.*\bmain\b)/\1 contrib non-free non-free-firmware/' \
+                    "$f"
+                changed=1
+            fi
+        elif grep -qE '^[[:space:]]*deb(-src)?[[:space:]]' "$f" 2>/dev/null; then
+            if grep -qE '^[[:space:]]*deb(-src)?[[:space:]].*\bmain\b' "$f" \
+                && ! grep -qE '^[[:space:]]*deb(-src)?[[:space:]].*\bnon-free-firmware\b' "$f"; then
+                sudo sed -i -E \
+                    's/^([[:space:]]*deb(-src)?[[:space:]].*\bmain\b)([[:space:]]|$)/\1 contrib non-free non-free-firmware\3/' \
+                    "$f"
+                changed=1
+            fi
+        fi
+    done
+    if ((changed)); then
+        sudo apt-get update
+    fi
+}
+
+# Install NVIDIA cuda-keyring for debian12 (580) or debian13 (latest/open).
+# debian12 on Trixie needs allow-insecure + gpgv (SHA1 / sqv rejection).
+enable_nvidia_cuda_repo() {
+    local distro="$1"
+    local arch="x86_64"
+    local url deb list
+    case "$distro" in
+        debian12|debian13) ;;
+        *)
+            echo "ERROR: unsupported NVIDIA CUDA distro label: $distro" >&2
+            exit 1
+            ;;
+    esac
+
+    url="https://developer.download.nvidia.com/compute/cuda/repos/${distro}/${arch}/cuda-keyring_1.1-1_all.deb"
+    deb=$(mktemp --suffix=-cuda-keyring.deb)
+    echo "Adding NVIDIA CUDA apt repo (${distro}/${arch})..."
+    curl -fsSL -o "$deb" "$url"
+    sudo dpkg -i "$deb"
+    rm -f "$deb"
+
+    if [[ "$distro" == "debian12" ]]; then
+        list="/etc/apt/sources.list.d/cuda-debian12-x86_64.list"
+        if [[ -f "$list" ]]; then
+            echo "Applying debian12 CUDA signing workaround for Trixie (allow-insecure + gpgv)..."
+            sudo sed -i \
+                's|\[signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg\]|[signed-by=/usr/share/keyrings/cuda-archive-keyring.gpg allow-insecure=yes]|' \
+                "$list"
+        fi
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends gnupg >/dev/null
+        echo 'APT::Key::GPGVCommand "/usr/bin/gpgv";' | sudo tee /etc/apt/apt.conf.d/99anomale-nvidia-gpgv >/dev/null
+    fi
+
+    sudo apt-get update
+}
+
+ensure_linux_headers_for_dkms() {
+    local running_hdrs="linux-headers-$(uname -r)"
+    if apt_candidate "$running_hdrs"; then
+        echo "Installing $running_hdrs for DKMS..."
+        sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$running_hdrs"
+        return 0
+    fi
+    case "$(uname -m)" in
+        x86_64)
+            echo "Installing linux-headers-amd64 for DKMS..."
+            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y linux-headers-amd64
+            ;;
+        *)
+            echo "WARNING: no matching linux-headers candidate for $(uname -r); DKMS may fail."
+            ;;
+    esac
+}
+
+blacklist_nouveau() {
+    echo "Blacklisting nouveau..."
+    sudo tee /etc/modprobe.d/blacklist-nouveau.conf >/dev/null <<'EOF'
+blacklist nouveau
+options nouveau modeset=0
+EOF
+    if command -v update-initramfs >/dev/null 2>&1; then
+        sudo update-initramfs -u
+    fi
+}
+
+# Pascal / GTX 10xx: debian12 CUDA repo, pin 580, proprietary modules.
+install_nvidia_drivers_pascal() {
+    ensure_debian_nonfree_components
+    enable_nvidia_cuda_repo debian12
+    ensure_linux_headers_for_dkms
+
+    if ! apt_candidate nvidia-driver-pinning-580; then
+        echo "ERROR: nvidia-driver-pinning-580 not available after enabling debian12 CUDA repo." >&2
+        exit 1
+    fi
+
+    echo "Installing NVIDIA 580 (proprietary) for Pascal / GTX 10xx..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-driver-pinning-580
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        nvidia-driver \
+        nvidia-kernel-dkms \
+        nvidia-settings \
+        firmware-misc-nonfree
+
+    blacklist_nouveau
+    echo "NVIDIA 580 proprietary drivers installed. Reboot required; then check nvidia-smi."
+}
+
+# Turing+: debian13 CUDA repo, nvidia-open, no branch pin (apt may upgrade later).
+install_nvidia_drivers_turing() {
+    ensure_debian_nonfree_components
+    enable_nvidia_cuda_repo debian13
+    ensure_linux_headers_for_dkms
+
+    if ! apt_candidate nvidia-open; then
+        echo "ERROR: nvidia-open not available after enabling debian13 CUDA repo." >&2
+        exit 1
+    fi
+
+    echo "Installing NVIDIA open drivers (newest available from debian13 CUDA repo)..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y nvidia-open firmware-misc-nonfree
+
+    blacklist_nouveau
+    echo "NVIDIA open drivers installed. Reboot required; then check nvidia-smi."
+}
+
+prompt_and_install_nvidia_drivers() {
+    local gen_opt
+    if [[ "$(uname -m)" != "x86_64" ]]; then
+        echo "ERROR: automatic NVIDIA CUDA repo install supports x86_64 only (got $(uname -m))." >&2
+        exit 1
+    fi
+
+    echo ""
+    cat <<'EOF'
+What NVIDIA GPU generation do you have?
+  1) GTX 10xx / Pascal (installs 580 proprietary from NVIDIA debian12 repo; pinned)
+  2) RTX 20xx / 30xx / 40xx / 50xx (Turing and newer; newest open drivers from debian13, unpinned)
+EOF
+
+    PS3="GPU generation?: "
+    select gen_opt in "GTX 10xx / Pascal (580)" "RTX 20xx+ (latest open)"; do
+        case $gen_opt in
+            "GTX 10xx / Pascal (580)")
+                install_nvidia_drivers_pascal
+                break
+                ;;
+            "RTX 20xx+ (latest open)")
+                install_nvidia_drivers_turing
+                break
+                ;;
+            *)
+                echo "Invalid entry. Please pick 1 or 2."
+                ;;
+        esac
+    done
+}
+
+# Trixie ships libgtk4-layer-shell 1.0.4; Anomale (gtk4-layer-shell crate) SIGSEGVs
+# on that when calling init_layer_shell under niri. Forky/Sid have 1.3.x.
+# Build upstream into /usr/local when the system library is too old.
+gtk4_layer_shell_version() {
+    pkg-config --modversion gtk4-layer-shell-0 2>/dev/null || echo "0"
+}
+
+version_lt() {
+    # Return 0 if $1 < $2 (dpkg version compare).
+    dpkg --compare-versions "$1" lt "$2"
+}
+
+install_gtk4_layer_shell_if_needed() {
+    local have need="1.1.0" src
+    have=$(gtk4_layer_shell_version)
+    if ! version_lt "$have" "$need"; then
+        echo "gtk4-layer-shell ${have} is new enough (>= ${need})."
+        return 0
+    fi
+
+    echo "System gtk4-layer-shell is ${have} (need >= ${need}). Building upstream into /usr/local..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        meson ninja-build libwayland-dev wayland-protocols libgtk-4-dev \
+        gobject-introspection libgirepository1.0-dev pkg-config
+
+    src="$BUILD_ROOT/gtk4-layer-shell"
+    clone_or_update_repo "https://github.com/wmww/gtk4-layer-shell.git" "$src"
+    (
+        cd "$src"
+        meson setup \
+            --prefix=/usr/local \
+            -Dexamples=false \
+            -Ddocs=false \
+            -Dtests=false \
+            -Dsmoke-tests=false \
+            build
+        ninja -C build
+        sudo ninja -C build install
+    )
+    sudo ldconfig
+
+    export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib/x86_64-linux-gnu:/usr/local/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+    have=$(gtk4_layer_shell_version)
+    if version_lt "$have" "$need"; then
+        echo "ERROR: gtk4-layer-shell still reports ${have} after /usr/local install." >&2
+        echo "Check PKG_CONFIG_PATH picks up /usr/local (got: ${PKG_CONFIG_PATH:-empty})." >&2
+        exit 1
+    fi
+    echo "gtk4-layer-shell ${have} installed under /usr/local."
+}
+
 ensure_rust_toolchain() {
     if [[ -f "$HOME/.cargo/env" ]]; then
         # shellcheck disable=SC1091
@@ -646,6 +868,7 @@ apt_packages_from_list "$THE_STUFF/debpackagelist.txt"
 ensure_rust_toolchain
 install_niri_from_source
 install_xwayland_satellite_from_source
+install_gtk4_layer_shell_if_needed
 install_adw_gtk3_theme
 install_python_packages
 install_getnf
@@ -655,11 +878,13 @@ setup_pywalfox
 
 sudo chsh -s /usr/bin/fish "$USER"
 
-# Required to build anomale
+# Required to build anomale (prefer /usr/local gtk4-layer-shell when present)
 ensure_rust_toolchain
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib/x86_64-linux-gnu:/usr/local/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 echo "Building Anomale..."
-(cd "$THE_STUFF/shell/" && cargo build --release)
+(cd "$THE_STUFF/shell/" && cargo clean 2>/dev/null || true && cargo build --release)
 if [[ ! -x "$THE_STUFF/shell/target/release/anomale" ]]; then
     echo "ERROR: Anomale failed to build (missing target/release/anomale)."
     exit 1
@@ -750,6 +975,7 @@ EOF
 
 PS3="DO YOU HAVE NVIDIA GPU?: "
 options=("YES" "NO")
+NVIDIA_GPU=0
 
 select opt in "${options[@]}"
 do
@@ -758,6 +984,7 @@ do
             echo "sorry..."
             rm -f "$HOME/.local/bin/niri-start-nonvidia.sh"
             mv "$HOME/.local/bin/niri-start-nvidia.sh" "$HOME/.local/bin/niri-start.sh"
+            NVIDIA_GPU=1
             sleep 1
             break
             ;;
@@ -773,6 +1000,10 @@ do
             ;;
     esac
 done
+
+if ((NVIDIA_GPU)); then
+    prompt_and_install_nvidia_drivers
+fi
 chmod +x "$HOME/.local/bin/"*
 rewrite_polkit_for_debian
 clear
@@ -827,4 +1058,5 @@ cat << "EOF"
 This is the end of the Debian script. Please reboot your computer.
 On Trixie, reboot into the trixie-backports kernel if one was just installed
 (uname -r should contain "bpo" after reboot).
+If you installed NVIDIA drivers, confirm with nvidia-smi after reboot.
 EOF

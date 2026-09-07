@@ -77,8 +77,11 @@ copies configs/wallpapers, sets up SDDM.
 via `extrepo`, on Trixie installs a `trixie-backports` kernel if you are not
 already on one, installs apt packages from `debpackagelist.txt`, builds niri
 and xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming,
-then the same Anomale/dots/SDDM path. Arch helper scripts under `thestuff/` are
-left unchanged; Debian-specific helpers are separate files.
+then the same Anomale/dots/SDDM path. On NVIDIA **YES**, it asks GPU generation,
+adds NVIDIA’s CUDA apt repos, and installs drivers (GTX 10xx / Pascal → 580
+proprietary from the debian12 CUDA repo, pinned; RTX 20xx+ → newest `nvidia-open`
+from debian13, unpinned). Arch helper scripts under `thestuff/` are left
+unchanged; Debian-specific helpers are separate files.
 
 ## Essential keybinds
 

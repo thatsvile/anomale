@@ -150,6 +150,8 @@ update_anomale_shell() {
     fi
 
     ensure_rust
+    export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/aarch64-linux-gnu/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+    export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib/x86_64-linux-gnu:/usr/local/lib/aarch64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
     (cd "$shell_dir" && cargo build --release)
     if [[ ! -x "$shell_dir/target/release/anomale" ]]; then
         echo "ERROR: Anomale failed to build." >&2
