@@ -1,6 +1,8 @@
-# Anomale Debian Sid/Forky package list (apt).
+# Anomale Debian Trixie package list (apt).
 # Used by debianinstall.sh only. Arch pacmanlist.txt is unchanged.
-# Install: grep -vE '^\s*(#|$)' debpackagelist.txt | xargs sudo apt-get install -y
+# Forky/Sid: debianinstall.sh swaps libwlroots-0.18 → libwlroots-0.20 when needed.
+#
+# LibreWolf: debianinstall.sh enables the official repo via extrepo before install.
 #
 # Not here (built/installed by debianinstall.sh from upstream):
 #   niri, xwayland-satellite, adw-gtk3 (adw-gtk-theme), bluetui
@@ -73,7 +75,8 @@ libqt5svg5
 librewolf
 libsixel-bin
 libwayland-client0
-libwlroots-0.20
+# Trixie: 0.18. Forky/Sid: installer substitutes 0.20.
+libwlroots-0.18
 mate-polkit
 mate-polkit-bin
 meson
@@ -88,7 +91,7 @@ python3-pip
 qml-module-qtgraphicaleffects
 qml-module-qtquick-controls2
 sddm
-# Qt6 greeter deps for Anomalous (modified Maldives); theme package also supplies reference assets
+# Qt6 greeter deps for Anomalous (modified Maldives)
 qml6-module-qtquick
 sddm-theme-maldives
 seatd

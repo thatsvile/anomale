@@ -1,7 +1,7 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-# Debian Sid/Forky installer for Anomale.
+# Debian Trixie installer for Anomale (Forky/Sid still largely OK).
 # Parallel to install.sh (Arch). Does not modify Arch paths or Arch helper scripts.
 
 clear
@@ -129,15 +129,138 @@ detect_cpu_arch() {
     esac
 }
 
+debian_codename() {
+    if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release
+        echo "${VERSION_CODENAME:-}"
+    fi
+}
+
+apt_candidate() {
+    local pkg="$1" cand
+    cand=$(apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    if [[ -z "$cand" || "$cand" == "(none)" ]]; then
+        return 1
+    fi
+    return 0
+}
+
+resolve_wlroots_package() {
+    # Trixie ships libwlroots-0.18; Forky/Sid ship libwlroots-0.20.
+    if apt_candidate libwlroots-0.18; then
+        echo "libwlroots-0.18"
+    elif apt_candidate libwlroots-0.20; then
+        echo "libwlroots-0.20"
+    else
+        echo "ERROR: neither libwlroots-0.18 nor libwlroots-0.20 is available." >&2
+        exit 1
+    fi
+}
+
 apt_packages_from_list() {
     local list="$1"
-    mapfile -t pkgs < <(grep -vE '^\s*(#|$)' "$list")
+    local -a pkgs=()
+    local line resolved
+    while IFS= read -r line; do
+        [[ "$line" =~ ^[[:space:]]*(#|$) ]] && continue
+        if [[ "$line" == "libwlroots-0.18" || "$line" == "libwlroots-0.20" ]]; then
+            continue
+        fi
+        pkgs+=("$line")
+    done < "$list"
+
+    resolved=$(resolve_wlroots_package)
+    pkgs+=("$resolved")
+    echo "Using wlroots package: $resolved"
+
     if ((${#pkgs[@]} == 0)); then
         echo "ERROR: no packages in $list" >&2
         exit 1
     fi
     echo "Installing apt packages from $(basename "$list")..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"
+    if ! sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${pkgs[@]}"; then
+        echo "ERROR: apt-get install failed. Check for packages with no installation candidate:" >&2
+        local p
+        for p in "${pkgs[@]}"; do
+            if ! apt_candidate "$p"; then
+                echo "  - missing: $p" >&2
+            fi
+        done
+        exit 1
+    fi
+}
+
+ensure_trixie_backports_source() {
+    local src="/etc/apt/sources.list.d/debian-backports.sources"
+    if grep -RqsE '^\s*Suites:.*trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
+        || grep -RqsE 'trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+        echo "trixie-backports already present in apt sources."
+        return 0
+    fi
+    echo "Enabling trixie-backports..."
+    sudo tee "$src" >/dev/null <<'EOF'
+Types: deb
+URIs: https://deb.debian.org/debian
+Suites: trixie-backports
+Components: main contrib non-free non-free-firmware
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+Enabled: yes
+EOF
+}
+
+ensure_trixie_backports_kernel() {
+    local codename arch img hdrs
+    codename=$(debian_codename)
+    if [[ "$codename" != "trixie" ]]; then
+        return 0
+    fi
+
+    if [[ "$(uname -r)" == *bpo* ]]; then
+        echo "Already running a Debian backports kernel ($(uname -r))."
+        return 0
+    fi
+
+    echo "Trixie detected without a backports kernel ($(uname -r))."
+    ensure_trixie_backports_source
+    sudo apt-get update
+
+    case "$(uname -m)" in
+        x86_64)
+            img=linux-image-amd64
+            hdrs=linux-headers-amd64
+            ;;
+        aarch64|arm64)
+            img=linux-image-arm64
+            hdrs=linux-headers-arm64
+            ;;
+        *)
+            echo "WARNING: unsupported arch for automatic backports kernel: $(uname -m)"
+            return 0
+            ;;
+    esac
+
+    echo "Installing $img and $hdrs from trixie-backports..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -t trixie-backports "$img" "$hdrs"
+    echo "Backports kernel packages installed. Reboot at the end of this install to boot it."
+}
+
+enable_librewolf_repo() {
+    echo "Enabling LibreWolf apt repository via extrepo..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends extrepo
+    # Optional catalog package on Trixie; ignore if unavailable.
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends extrepo-offline-data 2>/dev/null || true
+
+    if [[ -f /etc/apt/sources.list.d/extrepo_librewolf.sources ]]; then
+        echo "LibreWolf extrepo source already enabled."
+    else
+        sudo extrepo enable librewolf
+    fi
+    sudo apt-get update
+    if ! apt_candidate librewolf; then
+        echo "ERROR: librewolf still has no apt candidate after enabling extrepo." >&2
+        exit 1
+    fi
 }
 
 ensure_rust_toolchain() {
@@ -432,11 +555,12 @@ into a simple 10-minute process.
 
 This Graphical Shell and the included dotfiles 
 are meant to be installed over a minimal 
-Debian Sid/Forky installation with 
-no DE or display manager. (The script may work if used under 
-different conditions, but no promises. It installs from official 
-Debian packages plus a few trusted upstream sources — niri and
-xwayland-satellite are built from git. Use install.sh on Arch.)
+Debian Trixie installation (backports kernel
+recommended; the script can install it) with 
+no DE or display manager. Forky/Sid may work.
+It installs from official Debian packages plus
+LibreWolf via extrepo and a few upstream builds
+(niri, xwayland-satellite). Use install.sh on Arch.
 
 After considering all of this, you may proceed.
 EOF
@@ -494,11 +618,12 @@ fi
 if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
     . /etc/os-release
-    case "${VERSION_CODENAME:-}${PRETTY_NAME:-}" in
-        *sid*|*forky*|*Sid*|*Forky*)
+    case "${VERSION_CODENAME:-}" in
+        trixie|forky|sid)
+            echo "Detected Debian ${VERSION_CODENAME} (${PRETTY_NAME:-})."
             ;;
         *)
-            echo "WARNING: This installer targets Debian Sid/Forky. Detected: ${PRETTY_NAME:-unknown}."
+            echo "WARNING: This installer targets Debian Trixie (Forky/Sid OK). Detected: ${PRETTY_NAME:-unknown}."
             echo "Continuing anyway..."
             sleep 2
             ;;
@@ -511,6 +636,9 @@ sudo apt-get update
 echo "Ensuring git, curl, and build-essential are installed..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     git curl ca-certificates build-essential
+
+ensure_trixie_backports_kernel
+enable_librewolf_repo
 
 BUILD_ROOT=$(mktemp -d)
 
@@ -697,4 +825,6 @@ EOF
 
 cat << "EOF"
 This is the end of the Debian script. Please reboot your computer.
+On Trixie, reboot into the trixie-backports kernel if one was just installed
+(uname -r should contain "bpo" after reboot).
 EOF

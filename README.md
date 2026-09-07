@@ -31,7 +31,7 @@ dots.
 
 | Piece | Role |
 | --- | --- |
-| Arch or Debian Sid/Forky | Base system (`install.sh` or `debianinstall.sh`) |
+| Arch or Debian Trixie | Base system (`install.sh` or `debianinstall.sh`) |
 | niri | Window manager / compositor |
 | Anomale | Bar, menus, notifications, tray, wallpaper → pywal |
 | pywal16 | Color scheme from wallpaper (terminal, GTK, niri, SDDM, browser) |
@@ -40,7 +40,7 @@ dots.
 
 ## Requirements
 
-- Fresh **Arch** install, or minimal **Debian** netinst upgraded to **Sid/Forky**
+- Fresh **Arch** install, or minimal **Debian Trixie** (Forky/Sid may work)
 - Working network (`pacman` mirrors on Arch; apt on Debian)
 - No existing DE or display manager required; the installer enables SDDM
 
@@ -55,12 +55,13 @@ chmod +x anomale/anomale/install.sh
 bash anomale/anomale/install.sh
 ```
 
-### Debian Sid / Forky
+### Debian Trixie
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y git
 git clone https://github.com/thatsvile/anomale.git
+git -C anomale checkout deb
 chmod +x anomale/anomale/debianinstall.sh
 bash anomale/anomale/debianinstall.sh
 ```
@@ -72,10 +73,12 @@ environment. When either finishes, reboot.
 **Arch** installer: pacman packages (including niri), pip tools, builds Anomale,
 copies configs/wallpapers, sets up SDDM.
 
-**Debian** installer: apt packages from `debpackagelist.txt`, builds niri and
-xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming, then
-the same Anomale/dots/SDDM path. Arch helper scripts under `thestuff/` are left
-unchanged; Debian-specific helpers are separate files.
+**Debian** installer (`debianinstall.sh` on the `deb` branch): enables LibreWolf
+via `extrepo`, on Trixie installs a `trixie-backports` kernel if you are not
+already on one, installs apt packages from `debpackagelist.txt`, builds niri
+and xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming,
+then the same Anomale/dots/SDDM path. Arch helper scripts under `thestuff/` are
+left unchanged; Debian-specific helpers are separate files.
 
 ## Essential keybinds
 
