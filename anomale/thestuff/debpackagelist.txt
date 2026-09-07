@@ -1,8 +1,10 @@
-# Anomale Debian Trixie package list (apt).
+# Anomale Debian Forky/Sid package list (apt).
 # Used by debianinstall.sh only. Arch pacmanlist.txt is unchanged.
-# Forky/Sid: debianinstall.sh swaps libwlroots-0.18 → libwlroots-0.20 when needed.
+# Prefer libwlroots-0.20; installer falls back to 0.18 only if needed.
 #
 # LibreWolf: debianinstall.sh enables the official repo via extrepo before install.
+#
+# On Trixie, debianinstall.sh offers to migrate apt sources to Forky first.
 #
 # Not here (built/installed by debianinstall.sh from upstream):
 #   niri, xwayland-satellite, adw-gtk3 (adw-gtk-theme), bluetui
@@ -47,6 +49,7 @@ libgtk4-layer-shell0
 
 # --- runtime (mapped from pacmanlist.txt) ---
 alsa-utils
+aptitude
 brightnessctl
 btop
 fastfetch
@@ -75,8 +78,8 @@ libqt5svg5
 librewolf
 libsixel-bin
 libwayland-client0
-# Trixie: 0.18. Forky/Sid: installer substitutes 0.20.
-libwlroots-0.18
+# Forky/Sid: 0.20. Installer falls back to 0.18 only if 0.20 is missing.
+libwlroots-0.20
 mate-polkit
 mate-polkit-bin
 meson

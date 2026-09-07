@@ -31,7 +31,7 @@ dots.
 
 | Piece | Role |
 | --- | --- |
-| Arch or Debian Trixie | Base system (`install.sh` or `debianinstall.sh`) |
+| Arch or Debian Forky/Sid | Base system (`install.sh` or `debianinstall.sh`) |
 | niri | Window manager / compositor |
 | Anomale | Bar, menus, notifications, tray, wallpaper → pywal |
 | pywal16 | Color scheme from wallpaper (terminal, GTK, niri, SDDM, browser) |
@@ -40,7 +40,7 @@ dots.
 
 ## Requirements
 
-- Fresh **Arch** install, or minimal **Debian Trixie** (Forky/Sid may work)
+- Fresh **Arch** install, or minimal **Debian Forky/Sid** (Trixie can be migrated to Forky by the installer)
 - Working network (`pacman` mirrors on Arch; apt on Debian)
 - No existing DE or display manager required; the installer enables SDDM
 
@@ -55,7 +55,7 @@ chmod +x anomale/anomale/install.sh
 bash anomale/anomale/install.sh
 ```
 
-### Debian Trixie
+### Debian Forky / Sid
 
 ```bash
 sudo apt-get update
@@ -73,11 +73,12 @@ environment. When either finishes, reboot.
 **Arch** installer: pacman packages (including niri), pip tools, builds Anomale,
 copies configs/wallpapers, sets up SDDM.
 
-**Debian** installer (`debianinstall.sh` on the `deb` branch): enables LibreWolf
-via `extrepo`, on Trixie installs a `trixie-backports` kernel if you are not
-already on one, installs apt packages from `debpackagelist.txt`, builds niri
-and xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming,
-then the same Anomale/dots/SDDM path. On NVIDIA **YES**, it asks GPU generation,
+**Debian** installer (`debianinstall.sh` on the `deb` branch): targets **Forky/Sid**.
+If you are still on **Trixie**, it can rewrite apt sources to Forky, run a
+full upgrade, then ask you to reboot and re-run. It enables LibreWolf via
+`extrepo`, installs apt packages from `debpackagelist.txt`, builds niri and
+xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming, then
+the same Anomale/dots/SDDM path. On NVIDIA **YES**, it asks GPU generation,
 adds NVIDIA’s CUDA apt repos, and installs drivers (GTX 10xx / Pascal → 580
 proprietary from the debian12 CUDA repo, pinned; RTX 20xx+ → newest `nvidia-open`
 from debian13, unpinned). Arch helper scripts under `thestuff/` are left

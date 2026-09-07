@@ -1,7 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-# Debian Trixie installer for Anomale (Forky/Sid still largely OK).
+# Debian Forky/Sid installer for Anomale.
+# On Trixie, offers to migrate apt sources to Forky then re-run after upgrade/reboot.
 # Parallel to install.sh (Arch). Does not modify Arch paths or Arch helper scripts.
 
 clear
@@ -147,13 +148,13 @@ apt_candidate() {
 }
 
 resolve_wlroots_package() {
-    # Trixie ships libwlroots-0.18; Forky/Sid ship libwlroots-0.20.
-    if apt_candidate libwlroots-0.18; then
-        echo "libwlroots-0.18"
-    elif apt_candidate libwlroots-0.20; then
+    # Forky/Sid ship libwlroots-0.20; keep 0.18 as a last-resort fallback.
+    if apt_candidate libwlroots-0.20; then
         echo "libwlroots-0.20"
+    elif apt_candidate libwlroots-0.18; then
+        echo "libwlroots-0.18"
     else
-        echo "ERROR: neither libwlroots-0.18 nor libwlroots-0.20 is available." >&2
+        echo "ERROR: neither libwlroots-0.20 nor libwlroots-0.18 is available." >&2
         exit 1
     fi
 }
@@ -191,58 +192,96 @@ apt_packages_from_list() {
     fi
 }
 
-ensure_trixie_backports_source() {
-    local src="/etc/apt/sources.list.d/debian-backports.sources"
-    if grep -RqsE '^\s*Suites:.*trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null \
-        || grep -RqsE 'trixie-backports' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
-        echo "trixie-backports already present in apt sources."
-        return 0
+rewrite_apt_sources_trixie_to_forky() {
+    local f
+    echo "Rewriting apt sources: trixie → forky..."
+    # Drop backports entries (Forky has no trixie-backports equivalent we want).
+    if [[ -f /etc/apt/sources.list.d/debian-backports.sources ]]; then
+        sudo rm -f /etc/apt/sources.list.d/debian-backports.sources
     fi
-    echo "Enabling trixie-backports..."
-    sudo tee "$src" >/dev/null <<'EOF'
-Types: deb
-URIs: https://deb.debian.org/debian
-Suites: trixie-backports
-Components: main contrib non-free non-free-firmware
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-Enabled: yes
-EOF
+    for f in /etc/apt/sources.list /etc/apt/sources.list.d/*; do
+        [[ -e "$f" ]] || continue
+        [[ "$(basename "$f")" == cuda-* ]] && continue
+        [[ "$(basename "$f")" == extrepo_* ]] && continue
+        # Remove lines that only exist for stable backports.
+        sudo sed -i \
+            -e '/trixie-backports/d' \
+            -e '/Suites:.*trixie-backports/d' \
+            "$f" 2>/dev/null || true
+        sudo sed -i \
+            -e 's/\btrixie-security\b/forky-security/g' \
+            -e 's/\btrixie-updates\b/forky-updates/g' \
+            -e 's/\btrixie\b/forky/g' \
+            "$f"
+    done
 }
 
-ensure_trixie_backports_kernel() {
-    local codename arch img hdrs
-    codename=$(debian_codename)
-    if [[ "$codename" != "trixie" ]]; then
-        return 0
-    fi
+# Dist-upgrade Trixie → Forky. Always exits after upgrade so the user reboots
+# and re-runs this script on a consistent Forky system.
+migrate_trixie_to_forky() {
+    local opt
+    echo ""
+    cat <<'EOF'
+This installer targets Debian Forky (or Sid).
+You are on Debian Trixie (stable). Anomale needs newer packages
+(gtk4-layer-shell, wlroots, etc.) that Trixie does not ship cleanly.
 
-    if [[ "$(uname -r)" == *bpo* ]]; then
-        echo "Already running a Debian backports kernel ($(uname -r))."
-        return 0
-    fi
+The script can rewrite your apt sources to Forky and run a full upgrade.
+This is a real dist-upgrade — expect downtime and a reboot afterward.
+EOF
+    PS3="Upgrade this system from Trixie to Forky?: "
+    select opt in "YES — migrate to Forky" "NO — abort install"; do
+        case $opt in
+            "YES — migrate to Forky")
+                break
+                ;;
+            "NO — abort install")
+                echo "Aborted. Re-run on Forky/Sid, or choose YES to migrate."
+                exit 1
+                ;;
+            *)
+                echo "Invalid entry. Please pick 1 or 2."
+                ;;
+        esac
+    done
 
-    echo "Trixie detected without a backports kernel ($(uname -r))."
-    ensure_trixie_backports_source
+    rewrite_apt_sources_trixie_to_forky
+    echo "Updating apt indexes for Forky..."
     sudo apt-get update
+    echo "Running apt full-upgrade to Forky (this takes a while)..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -y full-upgrade
+    sudo DEBIAN_FRONTEND=noninteractive apt-get -y autoremove --purge || true
 
-    case "$(uname -m)" in
-        x86_64)
-            img=linux-image-amd64
-            hdrs=linux-headers-amd64
+    echo ""
+    cat <<'EOF'
+Trixie → Forky upgrade finished.
+
+Reboot now, then re-run debianinstall.sh so the rest of Anomale
+installs against Forky packages (and a Forky-running system).
+
+  sudo reboot
+  # after login:
+  bash anomale/anomale/debianinstall.sh
+EOF
+    exit 0
+}
+
+ensure_debian_forky_or_sid() {
+    local codename
+    codename=$(debian_codename)
+    case "$codename" in
+        forky|sid)
+            echo "Detected Debian ${codename} — OK."
             ;;
-        aarch64|arm64)
-            img=linux-image-arm64
-            hdrs=linux-headers-arm64
+        trixie)
+            migrate_trixie_to_forky
             ;;
         *)
-            echo "WARNING: unsupported arch for automatic backports kernel: $(uname -m)"
-            return 0
+            echo "ERROR: This installer targets Debian Forky or Sid (got: ${codename:-unknown})." >&2
+            echo "Start from a Forky/Sid minimal install, or run on Trixie to migrate to Forky." >&2
+            exit 1
             ;;
     esac
-
-    echo "Installing $img and $hdrs from trixie-backports..."
-    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -t trixie-backports "$img" "$hdrs"
-    echo "Backports kernel packages installed. Reboot at the end of this install to boot it."
 }
 
 enable_librewolf_repo() {
@@ -432,9 +471,8 @@ EOF
     done
 }
 
-# Trixie ships libgtk4-layer-shell 1.0.4; Anomale (gtk4-layer-shell crate) SIGSEGVs
-# on that when calling init_layer_shell under niri. Forky/Sid have 1.3.x.
-# Build upstream into /usr/local when the system library is too old.
+# Distro gtk4-layer-shell below 1.1.0 (e.g. old Trixie) SIGSEGVs Anomale under niri.
+# Forky/Sid usually ship 1.3.x — this is a no-op then. Build upstream into /usr/local when needed.
 gtk4_layer_shell_version() {
     pkg-config --modversion gtk4-layer-shell-0 2>/dev/null || echo "0"
 }
@@ -779,9 +817,9 @@ into a simple 10-minute process.
 
 This Graphical Shell and the included dotfiles 
 are meant to be installed over a minimal 
-Debian Trixie installation (backports kernel
-recommended; the script can install it) with 
-no DE or display manager. Forky/Sid may work.
+Debian Forky or Sid installation with 
+no DE or display manager. If you are still on Trixie,
+the script can migrate apt to Forky (dist-upgrade) first.
 It installs from official Debian packages plus
 LibreWolf via extrepo and a few upstream builds
 (niri, xwayland-satellite). Use install.sh on Arch.
@@ -842,16 +880,7 @@ fi
 if [[ -r /etc/os-release ]]; then
     # shellcheck disable=SC1091
     . /etc/os-release
-    case "${VERSION_CODENAME:-}" in
-        trixie|forky|sid)
-            echo "Detected Debian ${VERSION_CODENAME} (${PRETTY_NAME:-})."
-            ;;
-        *)
-            echo "WARNING: This installer targets Debian Trixie (Forky/Sid OK). Detected: ${PRETTY_NAME:-unknown}."
-            echo "Continuing anyway..."
-            sleep 2
-            ;;
-    esac
+    echo "Detected: ${PRETTY_NAME:-Debian} (${VERSION_CODENAME:-unknown})"
 fi
 
 echo "Updating apt package indexes..."
@@ -861,7 +890,7 @@ echo "Ensuring git, curl, and build-essential are installed..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     git curl ca-certificates build-essential
 
-ensure_trixie_backports_kernel
+ensure_debian_forky_or_sid
 enable_librewolf_repo
 
 BUILD_ROOT=$(mktemp -d)
@@ -1058,7 +1087,5 @@ EOF
 
 cat << "EOF"
 This is the end of the Debian script. Please reboot your computer.
-On Trixie, reboot into the trixie-backports kernel if one was just installed
-(uname -r should contain "bpo" after reboot).
 If you installed NVIDIA drivers, confirm with nvidia-smi after reboot.
 EOF
