@@ -461,12 +461,14 @@ install_gtk4_layer_shell_if_needed() {
     clone_or_update_repo "https://github.com/wmww/gtk4-layer-shell.git" "$src"
     (
         cd "$src"
+        # -Dvapi=false: Anomale only needs the C library; avoids requiring vapigen/valac.
         meson setup \
             --prefix=/usr/local \
             -Dexamples=false \
             -Ddocs=false \
             -Dtests=false \
             -Dsmoke-tests=false \
+            -Dvapi=false \
             build
         ninja -C build
         sudo ninja -C build install
