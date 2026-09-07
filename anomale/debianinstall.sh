@@ -67,6 +67,25 @@ rewrite_polkit_for_debian() {
     done
 }
 
+# Shared thestuff/.config keeps AdwaitaLegacy for Arch. Debian-only: Numix icons.
+apply_debian_numix_icon_theme() {
+    local xs="$HOME/.config/xsettingsd/xsettingsd.conf"
+    if [[ ! -f "$xs" ]]; then
+        echo "ERROR: missing $xs after config copy; cannot set Numix icon theme." >&2
+        exit 1
+    fi
+    if grep -qE '^Net/IconThemeName[[:space:]]+' "$xs"; then
+        sed -i -E 's|^Net/IconThemeName[[:space:]]+".*"$|Net/IconThemeName "Numix"|' "$xs"
+    else
+        echo 'Net/IconThemeName "Numix"' >>"$xs"
+    fi
+    if ! grep -qE '^Net/IconThemeName[[:space:]]+"Numix"$' "$xs"; then
+        echo "ERROR: failed to set Net/IconThemeName to Numix in $xs" >&2
+        exit 1
+    fi
+    echo "Debian icon theme set to Numix in ~/.config/xsettingsd/xsettingsd.conf"
+}
+
 # Run wal against the shipped wallpaper pointer so niri-colors.kdl, sddm.conf,
 # gtk-css, etc. exist before first login — same end state as picking a wallpaper.
 # Then apply SDDM theme.conf + background.jpg exactly like wal-refresh.sh.
@@ -1068,6 +1087,7 @@ cp -r "$THE_STUFF/.config/." "$HOME/.config/"
 
 rewrite_shipped_home_paths "$HOME/.cache"
 rewrite_shipped_home_paths "$HOME/.config"
+apply_debian_numix_icon_theme
 
 mkdir -p "$HOME/Misc"
 mkdir -p "$HOME/Pictures"

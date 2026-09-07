@@ -6,6 +6,7 @@
 # Steam: debianinstall.sh enables contrib/non-free + i386, installs steam-installer,
 #   ships thestuff/debian/steam-fixed, and (when NVIDIA) installs :i386 driver libs.
 # GitHub CLI (gh): debianinstall.sh adds cli.github.com apt repo (not in Forky).
+# Numix: numix-icon-theme; debianinstall.sh sets Net/IconThemeName in xsettingsd (Debian only).
 #
 # On Trixie, debianinstall.sh offers to migrate apt sources to Forky first.
 #
@@ -89,6 +90,7 @@ meson
 nano
 ninja-build
 nwg-look
+numix-icon-theme
 polkitd
 pulseaudio
 pulsemixer
