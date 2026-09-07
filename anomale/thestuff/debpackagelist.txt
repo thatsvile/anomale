@@ -87,6 +87,7 @@ nano
 ninja-build
 nwg-look
 polkitd
+pulseaudio
 pulsemixer
 python3-cairo
 python3-pil
