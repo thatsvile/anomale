@@ -302,6 +302,129 @@ enable_librewolf_repo() {
     fi
 }
 
+# GitHub CLI is not in Forky; use the official upstream apt repo.
+install_github_cli() {
+    local keyring="/etc/apt/keyrings/githubcli-archive-keyring.gpg"
+    local list="/etc/apt/sources.list.d/github-cli.list"
+    local arch
+    arch=$(dpkg --print-architecture)
+
+    echo "Installing GitHub CLI (gh) from cli.github.com apt repo..."
+    sudo mkdir -p -m 755 /etc/apt/keyrings /etc/apt/sources.list.d
+    curl -fsSL -o /tmp/githubcli-archive-keyring.gpg \
+        https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    sudo install -m 644 /tmp/githubcli-archive-keyring.gpg "$keyring"
+    rm -f /tmp/githubcli-archive-keyring.gpg
+    sudo chmod go+r "$keyring"
+
+    echo "deb [arch=${arch} signed-by=${keyring}] https://cli.github.com/packages stable main" \
+        | sudo tee "$list" >/dev/null
+
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y gh
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "ERROR: gh missing from PATH after install." >&2
+        exit 1
+    fi
+    echo "GitHub CLI installed: $(gh --version | head -1)"
+}
+
+install_steam() {
+    echo "Installing Steam (steam-installer)..."
+    ensure_debian_nonfree_components
+    sudo dpkg --add-architecture i386
+    sudo apt-get update
+
+    if ! apt_candidate steam-installer; then
+        echo "ERROR: steam-installer has no apt candidate (need contrib/non-free + i386)." >&2
+        exit 1
+    fi
+
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y steam-installer steam-devices
+    if [[ ! -x /usr/games/steam ]]; then
+        echo "ERROR: /usr/games/steam missing after steam-installer." >&2
+        exit 1
+    fi
+}
+
+# 32-bit NVIDIA userspace for Proton / Steam (after drivers + CUDA repo are present).
+install_steam_nvidia_libs() {
+    local -a wanted=(
+        nvidia-driver-libs:i386
+        libglx-nvidia0:i386
+        nvidia-vulkan-icd:i386
+        libegl-nvidia0:i386
+        libgles-nvidia1:i386
+        libgles-nvidia2:i386
+        libnvidia-glvkspirv:i386
+    )
+    local -a pkgs=()
+    local p
+
+    echo "Installing NVIDIA :i386 libraries for Steam/Proton..."
+    sudo dpkg --add-architecture i386
+    sudo apt-get update
+
+    for p in "${wanted[@]}"; do
+        if apt_candidate "$p"; then
+            pkgs+=("$p")
+        else
+            echo "  skip (no candidate): $p"
+        fi
+    done
+
+    if ((${#pkgs[@]} == 0)); then
+        echo "ERROR: no NVIDIA :i386 packages available for Steam; check CUDA/non-free repos." >&2
+        exit 1
+    fi
+
+    echo "Installing: ${pkgs[*]}"
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "${pkgs[@]}"
+}
+
+install_steam_wrapper_and_desktop() {
+    local wrapper_src="$THE_STUFF/debian/steam-fixed"
+    local wrapper_dst="$HOME/.local/bin/steam-fixed"
+    local desktop_dst="$HOME/.local/share/applications/steam.desktop"
+    local valve_desktop="$HOME/.steam/debian-installation/deb-installer/steam.desktop"
+
+    if [[ ! -f "$wrapper_src" ]]; then
+        echo "ERROR: missing Debian steam wrapper at $wrapper_src" >&2
+        exit 1
+    fi
+
+    mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
+    install -Dm755 "$wrapper_src" "$wrapper_dst"
+    ln -sfr "$wrapper_dst" "$HOME/.local/bin/steam"
+
+    if [[ -f "$valve_desktop" ]]; then
+        # Drop optional shebang; point every Exec at our wrapper.
+        sed -e '1{/^#!/d;}' \
+            -e "s|/usr/games/steam|${wrapper_dst}|g" \
+            -e 's/^PrefersNonDefaultGPU=true/# PrefersNonDefaultGPU=true/' \
+            -e 's/^X-KDE-RunOnDiscreteGpu=true/# X-KDE-RunOnDiscreteGpu=true/' \
+            "$valve_desktop" >"$desktop_dst"
+    else
+        cat >"$desktop_dst" <<EOF
+[Desktop Entry]
+Name=Steam
+Comment=Application for managing and playing games on Steam
+Exec=${wrapper_dst} %U
+Icon=steam
+Terminal=false
+Type=Application
+Categories=Network;FileTransfer;Game;
+MimeType=x-scheme-handler/steam;x-scheme-handler/steamlink;
+Keywords=Games
+EOF
+    fi
+
+    update-desktop-database "$HOME/.local/share/applications" 2>/dev/null || true
+    xdg-mime default steam.desktop x-scheme-handler/steam 2>/dev/null || true
+    xdg-mime default steam.desktop x-scheme-handler/steamlink 2>/dev/null || true
+    echo "Steam wrapper installed at $wrapper_dst (PATH symlink: ~/.local/bin/steam)"
+}
+
 # Ensure base Debian sources expose firmware/driver components.
 ensure_debian_nonfree_components() {
     local f changed=0
@@ -892,10 +1015,13 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
 
 ensure_debian_forky_or_sid
 enable_librewolf_repo
+ensure_debian_nonfree_components
+install_github_cli
 
 BUILD_ROOT=$(mktemp -d)
 
 apt_packages_from_list "$THE_STUFF/debpackagelist.txt"
+install_steam
 ensure_rust_toolchain
 install_niri_from_source
 install_xwayland_satellite_from_source
@@ -964,6 +1090,7 @@ else
     echo "ERROR: missing Debian anomale-apps at $THE_STUFF/debian/anomale-apps" >&2
     exit 1
 fi
+install_steam_wrapper_and_desktop
 chmod +x "$HOME/.local/bin/"*
 
 rewrite_polkit_for_debian
@@ -1034,6 +1161,10 @@ done
 
 if ((NVIDIA_GPU)); then
     prompt_and_install_nvidia_drivers
+    install_steam_nvidia_libs
+elif command -v nvidia-smi >/dev/null 2>&1; then
+    echo "nvidia-smi present; ensuring Steam NVIDIA :i386 libraries..."
+    install_steam_nvidia_libs
 fi
 chmod +x "$HOME/.local/bin/"*
 rewrite_polkit_for_debian

@@ -138,6 +138,11 @@ It tracks:
 
 On Debian (`debianinstall.sh`), `~/.local/bin/anomale-apps` is the Debian variant from `thestuff/debian/anomale-apps`. It also rebuilds **niri** and **xwayland-satellite** from upstream git into `/usr/local/bin`. Arch still uses `thestuff/.local/bin/anomale-apps` (no git rebuild of niri).
 
+Debian also installs:
+
+- **Steam** (`steam-installer` + `steam-devices`, with `contrib`/`non-free` and i386 multiarch). Launches go through `~/.local/bin/steam-fixed` (symlinked as `steam`) so the niri/NVIDIA menu patch sticks via `-noverifyfiles`. When NVIDIA drivers are installed (or `nvidia-smi` is already present), matching `:i386` NVIDIA userspace libs are installed for Proton.
+- **GitHub CLI (`gh`)** from [GitHub’s official apt repo](https://cli.github.com/) (not in Forky).
+
 Regular Arch packages still update with `pacman` as usual. Use `anomale-apps`
 for the non-repo stack above.
 
@@ -151,7 +156,7 @@ anomale/
     shell/                # Anomale Shell (Rust)
     .config/              # shipped user configs
     .local/bin/           # helpers (incl. anomale-apps) and session scripts
-    debian/               # Debian-only helpers (Debian anomale-apps, etc.)
+    debian/               # Debian-only helpers (anomale-apps, steam-fixed, etc.)
     anomalous/            # SDDM theme
     wallpaper/            # starter wallpapers
     pacmanlist.txt        # Arch packages (install.sh)

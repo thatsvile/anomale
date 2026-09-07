@@ -3,11 +3,14 @@
 # Prefer libwlroots-0.20; installer falls back to 0.18 only if needed.
 #
 # LibreWolf: debianinstall.sh enables the official repo via extrepo before install.
+# Steam: debianinstall.sh enables contrib/non-free + i386, installs steam-installer,
+#   ships thestuff/debian/steam-fixed, and (when NVIDIA) installs :i386 driver libs.
+# GitHub CLI (gh): debianinstall.sh adds cli.github.com apt repo (not in Forky).
 #
 # On Trixie, debianinstall.sh offers to migrate apt sources to Forky first.
 #
 # Not here (built/installed by debianinstall.sh from upstream):
-#   niri, xwayland-satellite, adw-gtk3 (adw-gtk-theme), bluetui
+#   niri, xwayland-satellite, adw-gtk3 (adw-gtk-theme), bluetui, gh, steam-installer
 # Polkit: mate-polkit is GTK3 so auth dialogs pick up adw-gtk3-dark + gtk-css.css
 #   the same way Arch's polkit-gnome does.
 

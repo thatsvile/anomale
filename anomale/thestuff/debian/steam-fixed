@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Debian Steam wrapper (Anomale): keep steamui menu patch applied and launch with -noverifyfiles.
+# Shipped only via debianinstall.sh from thestuff/debian/ — not the shared Arch .local/bin tree.
+set -euo pipefail
+
+LIB="${HOME}/.steam/debian-installation/steamui/library.js"
+STEAM_BIN="/usr/games/steam"
+
+patch_library() {
+  # First Steam bootstrap has not created steamui yet — skip until next launch.
+  if [[ ! -f "$LIB" ]]; then
+    echo "steam-fixed: $LIB not present yet (first Steam run); skipping menu patch"
+    return 0
+  fi
+
+  python3 - "$LIB" <<'PY'
+from pathlib import Path
+import sys
+
+p = Path(sys.argv[1])
+data = p.read_text(encoding="utf-8")
+bak = p.with_suffix(".js.bak-menufix")
+if not bak.exists():
+    bak.write_text(data)
+
+if "OnBlur(e){if(true)return;" in data:
+    print("steam-fixed: menu patch already present")
+    raise SystemExit(0)
+
+old150 = "OnBlur(e){if((!e.relatedTarget||!b.id(e.currentTarget,e.relatedTarget))&&(!e.relatedTarget||!this.props.instance.BIsElementInMenuHierarchy(e.relatedTarget))&&!this.props.instance.BIsSubMenuVisible()&&this.state.ready&&this.props.instance.visible){const e=A()?150:0;this.props.instance.OnCancel(e)}"
+old5k = "OnBlur(e){if((!e.relatedTarget||!b.id(e.currentTarget,e.relatedTarget))&&(!e.relatedTarget||!this.props.instance.BIsElementInMenuHierarchy(e.relatedTarget))&&!this.props.instance.BIsSubMenuVisible()&&this.state.ready&&this.props.instance.visible){const e=A()?5000:0;this.props.instance.OnCancel(e)}"
+new = "OnBlur(e){if(true)return;if((!e.relatedTarget||!b.id(e.currentTarget,e.relatedTarget))&&(!e.relatedTarget||!this.props.instance.BIsElementInMenuHierarchy(e.relatedTarget))&&!this.props.instance.BIsSubMenuVisible()&&this.state.ready&&this.props.instance.visible){const e=A()?5000:0;this.props.instance.OnCancel(e)}"
+
+if old150 in data:
+    p.write_text(data.replace(old150, new, 1))
+elif old5k in data:
+    p.write_text(data.replace(old5k, new, 1))
+else:
+    print("steam-fixed: OnBlur pattern not found (Steam UI changed?)", file=sys.stderr)
+    sys.exit(1)
+
+print(f"steam-fixed: patched library.js ({p.stat().st_size} bytes)")
+PY
+}
+
+steam_running() {
+  pgrep -f '/ubuntu12_32/steam( |$)' >/dev/null 2>&1
+}
+
+# Already running: just forward (opens URIs / focuses existing client).
+if steam_running; then
+  exec "$STEAM_BIN" -noverifyfiles "$@"
+fi
+
+# Stop leftover helpers without `steam -shutdown` (that starts Steam briefly).
+pkill -f '/ubuntu12_64/steamwebhelper' >/dev/null 2>&1 || true
+pkill -f '/ubuntu12_32/steam' >/dev/null 2>&1 || true
+for _ in $(seq 1 40); do
+  steam_running || break
+  sleep 0.25
+done
+sleep 0.5
+
+patch_library
+# Only require the patch marker when steamui already exists.
+if [[ -f "$LIB" ]]; then
+  grep -q 'OnBlur(e){if(true)return;' "$LIB"
+fi
+
+exec "$STEAM_BIN" -noverifyfiles "$@"
