@@ -1,0 +1,5 @@
+// Re-merge Anomale LibreWolf Pywalfox policy after apt transactions.
+// Debian equivalent of etc/pacman.d/hooks/anomale-librewolf-policy.hook
+DPkg::Post-Invoke {
+  "if [ -x /usr/local/lib/anomale/librewolf-pywalfox-policy-debian.sh ]; then /usr/local/lib/anomale/librewolf-pywalfox-policy-debian.sh >/dev/null 2>&1 || true; fi";
+};

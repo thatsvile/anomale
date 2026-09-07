@@ -44,7 +44,7 @@ Rectangle {
         }
     }
 
-    Keys.onPressed: {
+    Keys.onPressed: function (event) {
         if (event.key === Qt.Key_Space || event.key === Qt.Key_Enter || event.key === Qt.Key_Return) {
             container.clicked()
             event.accepted = true

@@ -1,0 +1,513 @@
+#!/bin/bash
+# Debian Sid/Forky variant of anomale-apps.
+# Arch install.sh continues to ship .local/bin/anomale-apps unchanged.
+# Installed as ~/.local/bin/anomale-apps by debianinstall.sh only.
+#
+# Extra vs Arch: rebuilds niri and xwayland-satellite from upstream git into /usr/local/bin.
+set -euo pipefail
+
+CACHE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/anomale/src"
+ANOMALE_REPO="https://github.com/thatsvile/anomale.git"
+ANOMALE_SHELL_GITPATH="anomale/thestuff/shell"
+PIP_PACKAGES=(pywal16 pywalfox haishoku colorz)
+WIFITUI_REPO="shazow/wifitui"
+NIRI_REPO="https://github.com/niri-wm/niri.git"
+XWS_REPO="https://github.com/Supreeeme/xwayland-satellite.git"
+
+export PATH="$PATH:/usr/local/bin:$HOME/.local/bin:$HOME/.cargo/bin"
+
+usage() {
+    cat <<'EOF'
+Usage: anomale-apps <command>
+
+Commands:
+  -update, --update, update   Check upstream apps and update if newer
+  -status, --status, status   Show installed vs upstream (no changes)
+  -h, --help, help            Show this help
+
+Tracks (Debian): Anomale shell, niri (git → /usr/local/bin), xwayland-satellite
+(git → /usr/local/bin), wifitui (GitHub releases), and pip packages
+pywal16 / pywalfox / haishoku / colorz.
+
+Apt packages still update with apt. Use anomale-apps for the upstream stack above.
+EOF
+}
+
+need_cmd() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "ERROR: required command not found: $1" >&2
+        exit 1
+    }
+}
+
+ensure_tools() {
+    need_cmd curl
+    need_cmd git
+    need_cmd python3
+    need_cmd tar
+    need_cmd sudo
+    need_cmd pip
+}
+
+ensure_rust() {
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1091
+        source "$HOME/.cargo/env"
+    fi
+    export PATH="$PATH:$HOME/.cargo/bin"
+    if command -v rustup >/dev/null 2>&1; then
+        rustup default stable >/dev/null 2>&1 || true
+    fi
+    need_cmd cargo
+}
+
+arch_name() {
+    case "$(uname -m)" in
+        x86_64) echo "x86_64" ;;
+        aarch64|arm64) echo "arm64" ;;
+        *)
+            echo "ERROR: Unsupported architecture: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+}
+
+ensure_repo() {
+    local dir="$1" url="$2" branch="${3:-}"
+    mkdir -p "$(dirname "$dir")"
+    export GIT_CONFIG_COUNT=1
+    export GIT_CONFIG_KEY_0=advice.detachedHead
+    export GIT_CONFIG_VALUE_0=false
+    if [[ -d "$dir/.git" ]]; then
+        git -C "$dir" remote set-url origin "$url" >/dev/null
+        if [[ -n "$branch" ]]; then
+            git -C "$dir" fetch --quiet --depth 1 origin "$branch"
+            git -C "$dir" checkout -q -B "$branch" FETCH_HEAD
+        else
+            git -C "$dir" fetch --quiet --depth 1 origin HEAD
+            git -C "$dir" checkout -q -B anomale-upstream FETCH_HEAD
+        fi
+        git -C "$dir" reset --quiet --hard FETCH_HEAD
+    else
+        rm -rf "$dir"
+        if [[ -n "$branch" ]]; then
+            git clone --quiet --depth 1 --branch "$branch" "$url" "$dir"
+        else
+            git clone --quiet --depth 1 "$url" "$dir"
+        fi
+    fi
+}
+
+short_head() {
+    git -C "$1" rev-parse --short=12 HEAD
+}
+
+print_row() {
+    printf '%-18s  %-14s  %-14s  %s\n' "$1" "$2" "$3" "$4"
+}
+
+status_note() {
+    local installed="$1" upstream="$2"
+    if [[ -z "$installed" || "$installed" == "-" ]]; then
+        echo "update available"
+    elif [[ "$installed" == "$upstream" ]]; then
+        echo "up to date"
+    else
+        echo "update available"
+    fi
+}
+
+# --- Anomale shell ---------------------------------------------------------
+
+shell_tree_hash() {
+    git -C "$1" rev-parse --short=12 "HEAD:${ANOMALE_SHELL_GITPATH}"
+}
+
+update_anomale_shell() {
+    local src stamp remote_tree shell_dir
+    src="$CACHE_ROOT/anomale-dots"
+    stamp="$CACHE_ROOT/shell.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    ensure_repo "$src" "$ANOMALE_REPO"
+    remote_tree=$(shell_tree_hash "$src")
+    shell_dir="$src/$ANOMALE_SHELL_GITPATH"
+
+    if [[ ! -f "$shell_dir/Cargo.toml" ]]; then
+        echo "ERROR: shell sources missing at $shell_dir" >&2
+        return 1
+    fi
+
+    if [[ -x "$HOME/.local/bin/anomale" && -f "$stamp" && "$(cat "$stamp")" == "$remote_tree" ]]; then
+        echo "Anomale shell: already up to date (${remote_tree})."
+        return 1
+    fi
+
+    if [[ -f "$stamp" ]]; then
+        echo "Anomale shell: $(cat "$stamp") -> ${remote_tree}"
+    else
+        echo "Anomale shell: building ${remote_tree}..."
+    fi
+
+    ensure_rust
+    (cd "$shell_dir" && cargo build --release)
+    if [[ ! -x "$shell_dir/target/release/anomale" ]]; then
+        echo "ERROR: Anomale failed to build." >&2
+        return 1
+    fi
+
+    mkdir -p "$HOME/.local/bin"
+    cp "$shell_dir/target/release/anomale" "$HOME/.local/bin/anomale"
+    chmod +x "$HOME/.local/bin/anomale"
+    echo "$remote_tree" >"$stamp"
+    echo "Anomale shell updated (${remote_tree})."
+    return 0
+}
+
+# --- niri ------------------------------------------------------------------
+
+update_niri() {
+    local src stamp remote
+    src="$CACHE_ROOT/niri"
+    stamp="$CACHE_ROOT/niri.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    # Prefer updating an existing user clone if present.
+    if [[ -d "$HOME/niri/.git" ]]; then
+        src="$HOME/niri"
+    fi
+
+    ensure_repo "$src" "$NIRI_REPO"
+    remote=$(short_head "$src")
+
+    if command -v niri >/dev/null 2>&1 && [[ -f "$stamp" && "$(cat "$stamp")" == "$remote" ]]; then
+        echo "niri: already up to date (${remote})."
+        return 1
+    fi
+
+    if [[ -f "$stamp" ]]; then
+        echo "niri: $(cat "$stamp") -> ${remote}"
+    else
+        echo "niri: building ${remote}..."
+    fi
+
+    ensure_rust
+    (cd "$src" && cargo build --release)
+    if [[ ! -x "$src/target/release/niri" ]]; then
+        echo "ERROR: niri failed to build." >&2
+        return 1
+    fi
+
+    sudo install -Dm755 "$src/target/release/niri" /usr/local/bin/niri
+    sudo install -Dm755 "$src/resources/niri-session" /usr/local/bin/niri-session
+    sudo install -Dm644 "$src/resources/niri.desktop" /usr/share/wayland-sessions/niri.desktop
+    sudo install -Dm644 "$src/resources/niri-portals.conf" /usr/local/share/xdg-desktop-portal/niri-portals.conf
+
+    local unit_tmp
+    unit_tmp=$(mktemp)
+    sed 's|^ExecStart=niri --session$|ExecStart=/usr/local/bin/niri --session|' \
+        "$src/resources/niri.service" >"$unit_tmp"
+    sudo install -Dm644 "$unit_tmp" /etc/systemd/user/niri.service
+    sudo install -Dm644 "$src/resources/niri-shutdown.target" /etc/systemd/user/niri-shutdown.target
+    rm -f "$unit_tmp"
+    systemctl --user daemon-reload 2>/dev/null || true
+
+    echo "$remote" >"$stamp"
+    echo "niri updated (${remote})."
+    return 0
+}
+
+# --- xwayland-satellite ----------------------------------------------------
+
+update_xwayland_satellite() {
+    local src stamp remote
+    src="$CACHE_ROOT/xwayland-satellite"
+    stamp="$CACHE_ROOT/xwayland-satellite.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    if [[ -d "$HOME/xwayland-satellite/.git" ]]; then
+        src="$HOME/xwayland-satellite"
+    fi
+
+    ensure_repo "$src" "$XWS_REPO"
+    remote=$(short_head "$src")
+
+    if command -v xwayland-satellite >/dev/null 2>&1 && [[ -f "$stamp" && "$(cat "$stamp")" == "$remote" ]]; then
+        echo "xwayland-satellite: already up to date (${remote})."
+        return 1
+    fi
+
+    if [[ -f "$stamp" ]]; then
+        echo "xwayland-satellite: $(cat "$stamp") -> ${remote}"
+    else
+        echo "xwayland-satellite: building ${remote}..."
+    fi
+
+    ensure_rust
+    (
+        cd "$src"
+        if [[ -f Cargo.lock ]]; then
+            cargo build --release --locked
+        else
+            cargo build --release
+        fi
+    )
+    if [[ ! -x "$src/target/release/xwayland-satellite" ]]; then
+        echo "ERROR: xwayland-satellite failed to build." >&2
+        return 1
+    fi
+
+    sudo install -Dm755 "$src/target/release/xwayland-satellite" /usr/local/bin/xwayland-satellite
+    echo "$remote" >"$stamp"
+    echo "xwayland-satellite updated (${remote})."
+    return 0
+}
+
+# --- wifitui ---------------------------------------------------------------
+
+latest_wifitui_tag() {
+    curl -fsSL "https://api.github.com/repos/${WIFITUI_REPO}/releases/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])"
+}
+
+installed_wifitui_tag() {
+    local stamp="$CACHE_ROOT/wifitui.installed"
+    if [[ -f "$stamp" ]]; then
+        cat "$stamp"
+        return 0
+    fi
+    echo ""
+}
+
+update_wifitui() {
+    local latest current tmp arch asset url tag_stripped stamp bin
+    stamp="$CACHE_ROOT/wifitui.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    latest=$(latest_wifitui_tag)
+    current=$(installed_wifitui_tag)
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" && "$current" == "$latest" ]]; then
+        echo "wifitui: already up to date ($latest)."
+        return 1
+    fi
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" ]]; then
+        echo "wifitui: ${current} -> ${latest}"
+    else
+        echo "wifitui: installing ${latest}..."
+    fi
+
+    tmp=$(mktemp -d)
+    arch=$(arch_name)
+    tag_stripped="${latest#v}"
+    asset="wifitui-${tag_stripped}-linux-${arch}.tar.gz"
+    url="https://github.com/${WIFITUI_REPO}/releases/download/${latest}/${asset}"
+
+    curl -fsSL "$url" -o "$tmp/$asset"
+    tar -xzf "$tmp/$asset" -C "$tmp"
+    bin=$(find "$tmp" -type f -name wifitui -print -quit)
+    if [[ -z "$bin" ]]; then
+        echo "ERROR: wifitui binary missing from release archive." >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+    sudo install -Dm755 "$bin" /usr/local/bin/wifitui
+    echo "$latest" >"$stamp"
+    rm -rf "$tmp"
+    echo "wifitui updated to ${latest}."
+    return 0
+}
+
+# --- pip packages ----------------------------------------------------------
+
+update_pip_packages() {
+    local outdated upgraded
+    outdated=$(
+        python3 - <<'PY'
+import json
+import subprocess
+import sys
+
+wanted = {"pywal16", "pywalfox", "haishoku", "colorz"}
+try:
+    out = subprocess.check_output(
+        [sys.executable, "-m", "pip", "list", "--outdated", "--format=json"],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+except subprocess.CalledProcessError:
+    sys.exit(0)
+
+pkgs = json.loads(out or "[]")
+names = sorted(p["name"] for p in pkgs if p.get("name", "").lower() in {w.lower() for w in wanted})
+print("\n".join(names))
+PY
+    )
+
+    local missing=()
+    local pkg
+    for pkg in "${PIP_PACKAGES[@]}"; do
+        if ! python3 -m pip show "$pkg" >/dev/null 2>&1; then
+            missing+=("$pkg")
+        fi
+    done
+
+    if [[ -z "$outdated" && ${#missing[@]} -eq 0 ]]; then
+        echo "pip: pywal16/pywalfox/haishoku/colorz already up to date."
+        return 1
+    fi
+
+    upgraded=()
+    [[ -n "$outdated" ]] && mapfile -t upgraded <<<"$outdated"
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "pip: missing -> ${missing[*]}"
+    fi
+    if [[ ${#upgraded[@]} -gt 0 ]]; then
+        echo "pip: outdated -> ${upgraded[*]}"
+    fi
+
+    sudo python3 -m pip install --break-system-packages --upgrade "${PIP_PACKAGES[@]}"
+    echo "pip packages updated."
+    return 0
+}
+
+# --- commands --------------------------------------------------------------
+
+cmd_status() {
+    ensure_tools
+    mkdir -p "$CACHE_ROOT"
+
+    local cur lat
+
+    printf '%-18s  %-14s  %-14s  %s\n' "APP" "INSTALLED" "UPSTREAM" "STATUS"
+    printf '%-18s  %-14s  %-14s  %s\n' "---" "---------" "--------" "------"
+
+    ensure_repo "$CACHE_ROOT/anomale-dots" "$ANOMALE_REPO"
+    lat=$(shell_tree_hash "$CACHE_ROOT/anomale-dots")
+    cur=$(cat "$CACHE_ROOT/shell.installed" 2>/dev/null || true)
+    if [[ ! -x "$HOME/.local/bin/anomale" ]]; then
+        print_row "Anomale" "-" "$lat" "update available"
+    else
+        print_row "Anomale" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+
+    if [[ -d "$HOME/niri/.git" ]]; then
+        ensure_repo "$HOME/niri" "$NIRI_REPO"
+        lat=$(short_head "$HOME/niri")
+    else
+        ensure_repo "$CACHE_ROOT/niri" "$NIRI_REPO"
+        lat=$(short_head "$CACHE_ROOT/niri")
+    fi
+    cur=$(cat "$CACHE_ROOT/niri.installed" 2>/dev/null || true)
+    if ! command -v niri >/dev/null 2>&1; then
+        print_row "niri" "-" "$lat" "update available"
+    else
+        print_row "niri" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+
+    if [[ -d "$HOME/xwayland-satellite/.git" ]]; then
+        ensure_repo "$HOME/xwayland-satellite" "$XWS_REPO"
+        lat=$(short_head "$HOME/xwayland-satellite")
+    else
+        ensure_repo "$CACHE_ROOT/xwayland-satellite" "$XWS_REPO"
+        lat=$(short_head "$CACHE_ROOT/xwayland-satellite")
+    fi
+    cur=$(cat "$CACHE_ROOT/xwayland-satellite.installed" 2>/dev/null || true)
+    if ! command -v xwayland-satellite >/dev/null 2>&1; then
+        print_row "xwayland-sat" "-" "$lat" "update available"
+    else
+        print_row "xwayland-sat" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+
+    cur=$(installed_wifitui_tag)
+    lat=$(latest_wifitui_tag)
+    if ! command -v wifitui >/dev/null 2>&1; then
+        print_row "wifitui" "-" "$lat" "update available"
+    else
+        print_row "wifitui" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+
+    python3 - <<'PY'
+import importlib.metadata as md
+import json
+import subprocess
+import sys
+
+wanted = ["pywal16", "pywalfox", "haishoku", "colorz"]
+outdated = {}
+try:
+    out = subprocess.check_output(
+        [sys.executable, "-m", "pip", "list", "--outdated", "--format=json"],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+    for p in json.loads(out or "[]"):
+        outdated[p["name"].lower()] = p.get("latest_version") or p.get("version")
+except subprocess.CalledProcessError:
+    pass
+
+for name in wanted:
+    try:
+        cur = md.version(name)
+    except md.PackageNotFoundError:
+        print(f"{name:<18}  {'-':<14}  {'?':<14}  update available")
+        continue
+    lat = outdated.get(name.lower(), cur)
+    status = "up to date" if lat == cur else "update available"
+    print(f"{name:<18}  {cur:<14}  {lat:<14}  {status}")
+PY
+}
+
+cmd_update() {
+    ensure_tools
+    local updated=0
+
+    echo "==> Checking Anomale shell (dots repo)..."
+    if update_anomale_shell; then updated=1; fi
+
+    echo "==> Checking niri (upstream git)..."
+    if update_niri; then updated=1; fi
+
+    echo "==> Checking xwayland-satellite (upstream git)..."
+    if update_xwayland_satellite; then updated=1; fi
+
+    echo "==> Checking wifitui (GitHub releases)..."
+    if update_wifitui; then updated=1; fi
+
+    echo "==> Checking pip packages..."
+    if update_pip_packages; then updated=1; fi
+
+    echo
+    if [[ "$updated" -eq 0 ]]; then
+        echo "Nothing needs to be updated."
+    else
+        echo "Done."
+    fi
+}
+
+main() {
+    if [[ $# -lt 1 ]]; then
+        usage
+        exit 1
+    fi
+
+    case "$1" in
+        -update|--update|update)
+            cmd_update
+            ;;
+        -status|--status|status)
+            cmd_status
+            ;;
+        -h|--help|help)
+            usage
+            ;;
+        *)
+            echo "Unknown command: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

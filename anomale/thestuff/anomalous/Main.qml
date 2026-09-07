@@ -40,17 +40,18 @@ Rectangle {
     Connections {
         target: sddm
 
-        onLoginSucceeded: {
+        function onLoginSucceeded() {
             errorMessage.color = "lightsteelblue"
             errorMessage.text = textConstants.loginSucceeded
         }
 
-        onLoginFailed: {
+        function onLoginFailed() {
             password.text = ""
             errorMessage.color = "red"
             errorMessage.text = textConstants.loginFailed
         }
-        onInformationMessage: {
+
+        function onInformationMessage(message) {
             errorMessage.color = "red"
             errorMessage.text = message
         }
@@ -58,11 +59,12 @@ Rectangle {
 
     Background {
         anchors.fill: parent
-        source: config.background
+        source: Qt.resolvedUrl(config.background)
         fillMode: Image.PreserveAspectCrop
         onStatusChanged: {
-            if (status == Image.Error && source != config.defaultBackground) {
-                source = config.defaultBackground
+            var defaultBackground = Qt.resolvedUrl(config.defaultBackground)
+            if (status == Image.Error && source != defaultBackground) {
+                source = defaultBackground
             }
         }
     }
@@ -70,7 +72,6 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         color: "transparent"
-        //visible: primaryScreen
 
         Rectangle {
             id: rectangle
@@ -114,7 +115,7 @@ Rectangle {
 
                         KeyNavigation.backtab: rebootButton; KeyNavigation.tab: password
 
-                        Keys.onPressed: {
+                        Keys.onPressed: function (event) {
                             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                                 sddm.login(name.text, password.text, sessionIndex)
                                 event.accepted = true
@@ -125,7 +126,7 @@ Rectangle {
 
                 Column {
                     width: parent.width
-                    spacing : 4
+                    spacing: 4
                     Text {
                         id: lblPassword
                         width: parent.width
@@ -149,7 +150,7 @@ Rectangle {
 
                         KeyNavigation.backtab: name; KeyNavigation.tab: session
 
-                        Keys.onPressed: {
+                        Keys.onPressed: function (event) {
                             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                                 sddm.login(name.text, password.text, sessionIndex)
                                 event.accepted = true
@@ -166,7 +167,7 @@ Rectangle {
                     Column {
                         z: 100
                         width: parent.width * 1.3
-                        spacing : 4
+                        spacing: 4
                         anchors.bottom: parent.bottom
 
                         Text {
@@ -191,7 +192,7 @@ Rectangle {
                             focusColor: config.input_focus_color
                             textColor: config.text_color
 
-                            arrowIcon: "angle-down.png"
+                            arrowIcon: Qt.resolvedUrl("angle-down.png")
 
                             model: sessionModel
                             index: sessionModel.lastIndex
@@ -203,8 +204,9 @@ Rectangle {
                     Column {
                         z: 101
                         width: parent.width * 0.7
-                        spacing : 4
+                        spacing: 4
                         anchors.bottom: parent.bottom
+                        visible: keyboard.enabled && keyboard.layouts.length > 0
 
                         Text {
                             id: lblLayout
@@ -228,7 +230,7 @@ Rectangle {
                             focusColor: config.input_focus_color
                             textColor: config.text_color
 
-                            arrowIcon: "angle-down.png"
+                            arrowIcon: Qt.resolvedUrl("angle-down.png")
 
                             KeyNavigation.backtab: session; KeyNavigation.tab: loginButton
                         }
@@ -237,14 +239,14 @@ Rectangle {
 
                 Column {
                     width: parent.width
-                        Text {
-                            id: errorMessage
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: textConstants.prompt
-                            font.pixelSize: 10
-                            font.family: config.font_family
-                            color: config.text_color
-                        }
+                    Text {
+                        id: errorMessage
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: textConstants.prompt
+                        font.pixelSize: 10
+                        font.family: config.font_family
+                        color: config.text_color
+                    }
                 }
 
                 Row {
@@ -301,7 +303,6 @@ Rectangle {
                         KeyNavigation.backtab: shutdownButton; KeyNavigation.tab: name
                     }
                 }
-                 
             }
         }
     }

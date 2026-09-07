@@ -2,7 +2,7 @@
 
 [![Watch the example video](https://img.youtube.com/vi/_Iyf3RlilNw/maxresdefault.jpg)](https://www.youtube.com/watch?v=_Iyf3RlilNw)
 
-Personal Arch Linux dots and a small Wayland shell, built around
+Personal Arch Linux / Debian Sid dots and a small Wayland shell, built around
 [niri](https://github.com/YaLTeR/niri) and pywal.
 
 This is software I maintain for my own machines. You can use it if you want.
@@ -31,7 +31,7 @@ dots.
 
 | Piece | Role |
 | --- | --- |
-| Arch Linux | Base system (official repos + a few upstream builds; no AUR) |
+| Arch or Debian Sid/Forky | Base system (`install.sh` or `debianinstall.sh`) |
 | niri | Window manager / compositor |
 | Anomale | Bar, menus, notifications, tray, wallpaper → pywal |
 | pywal16 | Color scheme from wallpaper (terminal, GTK, niri, SDDM, browser) |
@@ -40,11 +40,13 @@ dots.
 
 ## Requirements
 
-- Fresh Arch install (CachyOS / EndeavourOS may work; recent versions untested)
-- Working network and a usable `pacman` mirrorlist
+- Fresh **Arch** install, or minimal **Debian** netinst upgraded to **Sid/Forky**
+- Working network (`pacman` mirrors on Arch; apt on Debian)
 - No existing DE or display manager required; the installer enables SDDM
 
 ## Installation
+
+### Arch
 
 ```bash
 sudo pacman -S --needed git base-devel
@@ -53,12 +55,27 @@ chmod +x anomale/anomale/install.sh
 bash anomale/anomale/install.sh
 ```
 
-The script asks for sudo early and keeps it alive. It will also ask whether you
-have an NVIDIA GPU so the niri session autostart script gets the right
-environment. When it finishes, reboot.
+### Debian Sid / Forky
 
-What the installer roughly does: installs pacman packages (including niri), a few Python tools
-via pip, builds Anomale, copies configs and wallpapers, sets up SDDM, and wires session autostart.
+```bash
+sudo apt-get update
+sudo apt-get install -y git
+git clone https://github.com/thatsvile/anomale.git
+chmod +x anomale/anomale/debianinstall.sh
+bash anomale/anomale/debianinstall.sh
+```
+
+Both scripts ask for sudo early and keep it alive. They also ask whether you
+have an NVIDIA GPU so the niri session autostart script gets the right
+environment. When either finishes, reboot.
+
+**Arch** installer: pacman packages (including niri), pip tools, builds Anomale,
+copies configs/wallpapers, sets up SDDM.
+
+**Debian** installer: apt packages from `debpackagelist.txt`, builds niri and
+xwayland-satellite from upstream git, installs adw-gtk3 for GTK theming, then
+the same Anomale/dots/SDDM path. Arch helper scripts under `thestuff/` are left
+unchanged; Debian-specific helpers are separate files.
 
 ## Essential keybinds
 
@@ -112,6 +129,8 @@ It tracks:
 - **wifitui** (GitHub releases)
 - **pip:** pywal16, pywalfox, haishoku, colorz
 
+On Debian (`debianinstall.sh`), `~/.local/bin/anomale-apps` is the Debian variant from `thestuff/debian/anomale-apps`. It also rebuilds **niri** and **xwayland-satellite** from upstream git into `/usr/local/bin`. Arch still uses `thestuff/.local/bin/anomale-apps` (no git rebuild of niri).
+
 Regular Arch packages still update with `pacman` as usual. Use `anomale-apps`
 for the non-repo stack above.
 
@@ -119,14 +138,17 @@ for the non-repo stack above.
 
 ```
 anomale/
-  install.sh              # primary install path
+  install.sh              # Arch install path
+  debianinstall.sh        # Debian Sid/Forky install path
   thestuff/
     shell/                # Anomale Shell (Rust)
     .config/              # shipped user configs
     .local/bin/           # helpers (incl. anomale-apps) and session scripts
+    debian/               # Debian-only helpers (Debian anomale-apps, etc.)
     anomalous/            # SDDM theme
     wallpaper/            # starter wallpapers
-    pacmanlist.txt        # official packages the installer pulls
+    pacmanlist.txt        # Arch packages (install.sh)
+    debpackagelist.txt    # Debian packages (debianinstall.sh)
 ```
 
 ## Notes

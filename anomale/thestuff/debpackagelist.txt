@@ -1,0 +1,118 @@
+# Anomale Debian Sid/Forky package list (apt).
+# Used by debianinstall.sh only. Arch pacmanlist.txt is unchanged.
+# Install: grep -vE '^\s*(#|$)' debpackagelist.txt | xargs sudo apt-get install -y
+#
+# Not here (built/installed by debianinstall.sh from upstream):
+#   niri, xwayland-satellite, adw-gtk3 (adw-gtk-theme), bluetui
+# Polkit: mate-polkit is GTK3 so auth dialogs pick up adw-gtk3-dark + gtk-css.css
+#   the same way Arch's polkit-gnome does.
+
+# --- bootstrap / build ---
+build-essential
+ca-certificates
+clang
+curl
+git
+pkg-config
+rustup
+
+# --- niri build deps (upstream Getting Started / Ubuntu list) ---
+gcc
+libdbus-1-dev
+libdisplay-info-dev
+libegl-dev
+libgbm-dev
+libinput-dev
+libpango1.0-dev
+libpipewire-0.3-dev
+libseat-dev
+libsystemd-dev
+libudev-dev
+libwayland-dev
+libwayland-server0
+libxkbcommon-dev
+
+# --- xwayland-satellite build deps ---
+libxcb-cursor-dev
+libxcb-ewmh2
+libxcb-icccm4
+libxcb1-dev
+
+# --- anomale shell build deps ---
+libgtk-4-dev
+libgtk4-layer-shell-dev
+libgtk4-layer-shell0
+
+# --- runtime (mapped from pacmanlist.txt) ---
+alsa-utils
+brightnessctl
+btop
+fastfetch
+ffmpeg
+ffmpegthumbnailer
+file-roller
+fish
+foot
+fzf
+glslang-tools
+gnome-keyring
+gsettings-desktop-schemas
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-good
+gstreamer1.0-plugins-ugly
+gvfs
+gvfs-backends
+hwinfo
+imagemagick
+libcjson1
+libgtk-3-0t64
+libnotify-bin
+libpango-1.0-0
+libpulse0
+libqt5svg5
+librewolf
+libsixel-bin
+libwayland-client0
+libwlroots-0.20
+mate-polkit
+mate-polkit-bin
+meson
+nano
+ninja-build
+nwg-look
+polkitd
+pulsemixer
+python3-cairo
+python3-pil
+python3-pip
+qml-module-qtgraphicaleffects
+qml-module-qtquick-controls2
+sddm
+# Qt6 greeter deps for Anomalous (modified Maldives); theme package also supplies reference assets
+qml6-module-qtquick
+sddm-theme-maldives
+seatd
+slurp
+speech-dispatcher
+swaybg
+systemd-zram-generator
+thunar
+thunar-archive-plugin
+thunar-volman
+tumbler
+wayland-protocols
+wf-recorder
+wl-clipboard
+wlr-randr
+xdg-desktop-portal
+xdg-desktop-portal-gtk
+xdg-desktop-portal-wlr
+xdg-user-dirs
+xdg-utils
+xfsprogs
+xl2tpd
+xserver-xorg-input-libinput
+xwayland
+
+# --- optional boot splash (Debian analog to Arch UKI splash) ---
+plymouth
