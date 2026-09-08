@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Launch Steam with the niri/Wayland top-menu OnBlur fix.
+# Patches steamui/library.js and starts Steam with -noverifyfiles so the
+# client does not restore the file on startup. PATH/desktop hooks keep
+# subsequent launches (and in-client Restart) on this path.
+set -euo pipefail
+
+STEAMROOT="${HOME}/.local/share/Steam"
+LIB="${STEAMROOT}/steamui/library.js"
+BIN_STEAM="${HOME}/.local/bin/steam"
+BIN_FIXED="${HOME}/.local/bin/steam-fixed"
+DESKTOP_DIR="${HOME}/.local/share/applications"
+DESKTOP="${DESKTOP_DIR}/steam.desktop"
+
+repair_steam_sh() {
+  local sh="${STEAMROOT}/steam.sh"
+  local real="${STEAMROOT}/steam.sh.real"
+  local bootstrap="/usr/lib/steam/bootstraplinux_ubuntu12_32.tar.xz"
+
+  if [[ -f "$sh" ]] && grep -q 'steam-menus-onblur-wrap' "$sh" 2>/dev/null; then
+    echo "steam-fixed: restoring Valve steam.sh (removing broken wrap)" >&2
+    if [[ -f "$real" ]] && ! grep -q 'steam-menus-onblur-wrap' "$real" 2>/dev/null; then
+      cp -a "$real" "$sh"
+    elif [[ -f "$bootstrap" ]]; then
+      tar -xJf "$bootstrap" -C "$STEAMROOT" steam.sh
+      chmod +x "$sh"
+    else
+      echo "steam-fixed: error: cannot restore steam.sh" >&2
+      exit 1
+    fi
+  fi
+  rm -f "$real"
+}
+
+patch_library() {
+  local lib="$LIB"
+  if [[ ! -f "$lib" ]]; then
+    for c in \
+      "${HOME}/.steam/steam/steamui/library.js" \
+      "${HOME}/.steam/root/steamui/library.js"
+    do
+      [[ -f "$c" ]] || continue
+      lib="$c"
+      break
+    done
+  fi
+  if [[ ! -f "$lib" ]]; then
+    echo "steam-fixed: library.js not found yet (first Steam run will download it)" >&2
+    return 0
+  fi
+  python3 - "$lib" <<'PY'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+data = p.read_text(encoding="utf-8")
+old = "OnBlur(e){if((!e.relatedTarget||!b.id(e.currentTarget,e.relatedTarget))&&(!e.relatedTarget||!this.props.instance.BIsElementInMenuHierarchy(e.relatedTarget))&&!this.props.instance.BIsSubMenuVisible()&&this.state.ready&&this.props.instance.visible){const e=A()?150:0;this.props.instance.OnCancel(e)}"
+new = "OnBlur(e){if(true)return;if((!e.relatedTarget||!b.id(e.currentTarget,e.relatedTarget))&&(!e.relatedTarget||!this.props.instance.BIsElementInMenuHierarchy(e.relatedTarget))&&!this.props.instance.BIsSubMenuVisible()&&this.state.ready&&this.props.instance.visible){const e=A()?150:0;this.props.instance.OnCancel(e)}"
+if "OnBlur(e){if(true)return;" in data:
+    print("steam-fixed: library.js already patched", file=sys.stderr)
+elif old in data:
+    bak = p.with_suffix(".js.bak-menufix")
+    if not bak.exists():
+        bak.write_text(data)
+    p.write_text(data.replace(old, new, 1))
+    print("steam-fixed: patched", p, file=sys.stderr)
+else:
+    print("steam-fixed: OnBlur pattern not found — Steam UI changed; update this script", file=sys.stderr)
+    raise SystemExit(1)
+PY
+}
+
+install_path_steam() {
+  cat >"$BIN_STEAM" <<'EOF'
+#!/usr/bin/env bash
+exec "$HOME/.local/bin/steam-fixed" "$@"
+EOF
+  chmod +x "$BIN_STEAM"
+}
+
+install_desktop() {
+  mkdir -p "$DESKTOP_DIR"
+  if [[ -f /usr/share/applications/steam.desktop ]]; then
+    sed -E 's|^Exec=/usr/bin/steam|Exec='"$HOME"'/.local/bin/steam-fixed|' \
+      /usr/share/applications/steam.desktop >"$DESKTOP"
+  fi
+}
+
+self_install() {
+  local src dst
+  src="$(readlink -f "${BASH_SOURCE[0]}")"
+  dst="$(readlink -f "$BIN_FIXED" 2>/dev/null || true)"
+  if [[ -f "$src" && "$src" != "$dst" ]]; then
+    install -m 755 "$src" "$BIN_FIXED"
+  fi
+}
+
+args=("$@")
+
+self_install
+repair_steam_sh
+patch_library
+install_path_steam
+install_desktop
+
+if pgrep -f "${STEAMROOT}/ubuntu12_32/steam " >/dev/null 2>&1; then
+  echo "steam-fixed: hooks/patch updated. Fully quit Steam, then start it again." >&2
+  exit 0
+fi
+
+filtered=()
+have_nv=0
+for a in "${args[@]}"; do
+  if [[ "$a" == "-noverifyfiles" ]]; then
+    have_nv=1
+  fi
+  filtered+=("$a")
+done
+if [[ "$have_nv" -eq 0 ]]; then
+  filtered=(-noverifyfiles "${filtered[@]}")
+fi
+
+exec /usr/bin/steam "${filtered[@]}"

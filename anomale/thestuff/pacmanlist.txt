@@ -43,6 +43,7 @@ sddm
 seatd
 slurp
 speech-dispatcher
+steam
 swaybg
 thunar
 thunar-archive-plugin

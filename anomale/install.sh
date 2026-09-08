@@ -53,9 +53,69 @@ detect_cpu_arch() {
     esac
 }
 
+enable_multilib() {
+    # Steam and its 32-bit deps live in [multilib].
+    if grep -qE '^\[multilib\]' /etc/pacman.conf; then
+        echo "[multilib] already enabled."
+        return 0
+    fi
+    echo "Enabling [multilib] (required for Steam)..."
+    local tmp bak
+    tmp=$(mktemp)
+    bak="/etc/pacman.conf.bak.anomale-$(date +%Y%m%d%H%M%S)"
+    sudo cp -a /etc/pacman.conf "$bak"
+    awk '
+      /^#\[multilib\]$/ {
+        print "[multilib]"
+        getline
+        if ($0 ~ /^#Include = \/etc\/pacman\.d\/mirrorlist$/) {
+          print "Include = /etc/pacman.d/mirrorlist"
+        } else {
+          print
+        }
+        next
+      }
+      { print }
+    ' /etc/pacman.conf >"$tmp"
+    sudo cp "$tmp" /etc/pacman.conf
+    rm -f "$tmp"
+    if ! grep -qE '^\[multilib\]' /etc/pacman.conf; then
+        echo "ERROR: could not enable [multilib] in /etc/pacman.conf (backup: $bak)."
+        exit 1
+    fi
+    echo "Syncing package databases after enabling [multilib]..."
+    sudo pacman -Sy
+}
+
 install_pacman_packages() {
+    enable_multilib
     echo "Installing official repository packages..."
     sudo pacman -S --needed --noconfirm - < "$THE_STUFF/pacmanlist.txt"
+}
+
+setup_steam() {
+    # Steam menus close immediately under niri unless library.js is patched and
+    # Steam is started with -noverifyfiles. steam-fixed handles that; wire PATH
+    # and the desktop entry so every launch goes through it.
+    echo "Configuring Steam launchers (niri menu fix)..."
+    if [[ ! -x "$HOME/.local/bin/steam-fixed" ]]; then
+        echo "ERROR: steam-fixed missing from ~/.local/bin after copy."
+        exit 1
+    fi
+    cat >"$HOME/.local/bin/steam" <<'EOF'
+#!/usr/bin/env bash
+exec "$HOME/.local/bin/steam-fixed" "$@"
+EOF
+    chmod +x "$HOME/.local/bin/steam"
+
+    mkdir -p "$HOME/.local/share/applications"
+    if [[ -f /usr/share/applications/steam.desktop ]]; then
+        sed -E "s|^Exec=/usr/bin/steam|Exec=${HOME}/.local/bin/steam-fixed|" \
+            /usr/share/applications/steam.desktop \
+            >"$HOME/.local/share/applications/steam.desktop"
+    else
+        echo "WARNING: /usr/share/applications/steam.desktop missing; skip desktop override."
+    fi
 }
 
 install_python_packages() {
@@ -340,6 +400,8 @@ if [[ ! -f "$HOME/.local/bin/niri-start-nvidia.sh" || ! -f "$HOME/.local/bin/nir
     exit 1
 fi
 
+setup_steam
+
 #set terminal
 fish -c "set -Ux TERMINAL foot"
 
@@ -382,6 +444,8 @@ do
             echo "sorry..."
             rm -f "$HOME/.local/bin/niri-start-nonvidia.sh"
             mv "$HOME/.local/bin/niri-start-nvidia.sh" "$HOME/.local/bin/niri-start.sh"
+            echo "Installing 32-bit NVIDIA libs for Steam/Proton..."
+            sudo pacman -S --needed --noconfirm lib32-nvidia-utils
             sleep 1
             break 
             ;;
