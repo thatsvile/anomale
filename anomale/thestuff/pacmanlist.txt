@@ -71,3 +71,5 @@ ffmpeg4.4
 gst-plugins-good
 gst-plugins-bad
 gst-plugins-ugly
+xwayland-satellite
+github-cli

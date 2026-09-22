@@ -133,3 +133,8 @@ anomale/
 
 This repo tracks my machines. Expect breakage if you follow it blindly.
 Issues and patches may sit unanswered for a long time, or forever.
+
+
+**AI Disclosure**
+
+AI has been used as part of the creation process for aspects of this project. 

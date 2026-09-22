@@ -1,20 +1,16 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-#clear tty and define variables
 clear
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 THE_STUFF="$SCRIPT_DIR/thestuff"
 SUDOERS_DROPIN="/etc/sudoers.d/99-anomale-install"
 BUILD_ROOT=""
 
-# pip and getnf drop binaries in these; a login shell does not always have them.
 export PATH="$PATH:/usr/local/bin:$HOME/.local/bin"
 
-# Without this, any failing command under `set -e` exits with no explanation.
 report_failure() {
     local exit_code=$?
-    # Subshells inherit the trap and would report the same failure twice.
     [[ "$BASHPID" == "$$" ]] || return 0
     echo "" >&2
     echo "ERROR: install.sh aborted at line ${1} (exit ${exit_code})." >&2
@@ -32,7 +28,6 @@ cleanup_install() {
 }
 trap cleanup_install EXIT INT TERM
 
-# Replace shipped absolute paths so cache/configs work for the installing user.
 rewrite_shipped_home_paths() {
     local dest="$1"
     [[ -d "$dest" ]] || return 0
@@ -54,7 +49,6 @@ detect_cpu_arch() {
 }
 
 enable_multilib() {
-    # Steam and its 32-bit deps live in [multilib].
     if grep -qE '^\[multilib\]' /etc/pacman.conf; then
         echo "[multilib] already enabled."
         return 0
@@ -94,9 +88,6 @@ install_pacman_packages() {
 }
 
 setup_steam() {
-    # Steam menus close immediately under niri unless library.js is patched and
-    # Steam is started with -noverifyfiles. steam-fixed handles that; wire PATH
-    # and the desktop entry so every launch goes through it.
     echo "Configuring Steam launchers (niri menu fix)..."
     if [[ ! -x "$HOME/.local/bin/steam-fixed" ]]; then
         echo "ERROR: steam-fixed missing from ~/.local/bin after copy."
@@ -121,8 +112,6 @@ EOF
 install_python_packages() {
     echo "Installing Python packages via pip..."
 
-    # An earlier run may have put these in ~/.local, whose site-packages shadow
-    # the system copies at import time.
     local stale
     stale=$(pip list --user --format=freeze 2>/dev/null | cut -d= -f1 \
         | grep -x -e pywal16 -e pywalfox -e haishoku -e colorz || true)
@@ -132,9 +121,6 @@ install_python_packages() {
         pip uninstall --break-system-packages -y $stale
     fi
 
-    # System-wide so wal/pywalfox land in /usr/bin. A user-level install puts them
-    # in ~/.local/bin, which the browser does not have on PATH when it spawns the
-    # Pywalfox native messaging host.
     sudo pip install --break-system-packages --upgrade \
         pywal16 \
         pywalfox \
@@ -196,19 +182,12 @@ setup_pywalfox() {
         echo "ERROR: pywalfox not on PATH after pip install."
         exit 1
     fi
-
-    # LibreWolf reads native messaging hosts from the Mozilla paths, so the
-    # global manifest covers it. The manifest records whichever pywalfox path is
-    # used to run the install, so keep this pointed at the system binary.
     sudo "$pywalfox_bin" install --global
 
-    # Per-user manifest as a fallback. Run unsudoed so the profile path setting
-    # is saved to the installing user's config rather than root's.
     "$pywalfox_bin" install --manifest-path "$HOME/.mozilla/native-messaging-hosts" \
         --profile-path "$HOME/.librewolf"
 }
 
-#welcome to the installer, kid... Have a disclaimer.
 echo -e "\033[0;32m" 
 cat << "EOF"
 
