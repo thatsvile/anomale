@@ -274,6 +274,48 @@ filechooser #pathbarbox .search {{
     font-weight: bold;
 }}
 
+/* --- DIALOG / PORTAL / AUTH BUTTONS --- */
+/* GTK4 / libadwaita default button radius */
+* {{
+    --button-radius: 0px;
+}}
+
+window.dialog button,
+window.modal button,
+dialog button,
+messagedialog button,
+.file-chooser .dialog-action-area button,
+filechooser .dialog-action-area button,
+.dialog-action-area button,
+.dialog-action-box button,
+messagedialog.csd .dialog-action-area button,
+messagedialog.csd .dialog-action-area button:first-child,
+messagedialog.csd .dialog-action-area button:last-child,
+messagedialog.csd .dialog-action-area button:only-child,
+window.dialog .dialog-action-area button:first-child,
+window.dialog .dialog-action-area button:last-child,
+window.dialog .dialog-action-area button:only-child,
+button.suggested-action,
+button.destructive-action,
+button.pill {{
+    border-radius: 0px;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+}}
+
+/* Adwaita sets GTK3 outline radii on message-dialog action buttons */
+messagedialog.csd .dialog-action-area button,
+messagedialog.csd .dialog-action-area button:first-child,
+messagedialog.csd .dialog-action-area button:last-child,
+messagedialog.csd .dialog-action-area button:only-child {{
+    -gtk-outline-top-left-radius: 0px;
+    -gtk-outline-top-right-radius: 0px;
+    -gtk-outline-bottom-left-radius: 0px;
+    -gtk-outline-bottom-right-radius: 0px;
+}}
+
 /* --- SCROLLBARS --- */
 scrollbar {{
     background-color: transparent;
