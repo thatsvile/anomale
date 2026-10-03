@@ -1,5 +1,3 @@
-// Niri config matched to ~/.config/mango/config.conf + anomale integration
-
 include "animations/pixel-waves.kdl"
 
 input {
@@ -21,7 +19,7 @@ input {
     }
 
     mouse {
-        // mouse_natural_scrolling=0 in mango
+        // mouse_natural_scrolling=0
     }
 
     warp-mouse-to-focus

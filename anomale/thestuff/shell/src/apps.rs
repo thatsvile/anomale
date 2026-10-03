@@ -217,7 +217,6 @@ impl AppLauncher {
              if idx >= 0 {
                  let apps_ref = launcher_clone_activate.borrow();
                  let app_to_launch = apps_ref.current_matches.borrow().get(idx as usize).cloned();
-                 // Drop the borrow of apps_ref before launching (though less critical here as we aren't using it in the if body fundamentally, but good practice)
                  drop(apps_ref);
 
                  if let Some(app) = app_to_launch {

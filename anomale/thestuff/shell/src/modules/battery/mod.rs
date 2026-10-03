@@ -25,8 +25,6 @@ pub fn build(charge_color: String) -> GtkBox {
     gtk4::glib::timeout_add_seconds_local(1, move || {
         let mut bpath = battery_path.lock().unwrap();
         
-        // If no battery was found, maybe try finding it again occasionally? 
-        // For now, assume if it's N/A, it stays N/A (like a desktop).
         if bpath.is_none() {
              *bpath = find_battery_path();
         }

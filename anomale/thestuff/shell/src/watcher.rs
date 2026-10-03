@@ -18,9 +18,7 @@ pub fn spawn_watcher(paths: Vec<PathBuf>, sender: async_channel::Sender<()>) {
 
         for path in &paths {
             if let Err(_e) = watcher.watch(path, RecursiveMode::NonRecursive) {
-                // validation or logging could go here
             } else {
-                // watching started
             }
         }
         

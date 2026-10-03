@@ -70,7 +70,6 @@ Rectangle {
     Rectangle {
         anchors.fill: parent
         color: "transparent"
-        //visible: primaryScreen
 
         Rectangle {
             id: rectangle
@@ -85,7 +84,6 @@ Rectangle {
                 id: mainColumn
                 anchors.centerIn: parent
                 spacing: 8
-                // Welcome text removed for minimality
 
                 Column {
                     width: parent.width

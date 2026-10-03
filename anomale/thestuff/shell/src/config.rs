@@ -1380,13 +1380,11 @@ mod tests {
         let apps_config_path = config_dir.join("apps.conf");
         let mut file = fs::File::create(&apps_config_path)?;
         writeln!(file, "background_color=pywal_color0")?;
-        // writeln!(file, "border_color=pywal_color1")?; // Optional
         writeln!(file, "background_opacity=0.8")?;
         writeln!(file, "list_text_color=#aabbcc")?;
         writeln!(file, "highlight_color=#112233")?;
 
         // Load config
-        // access AppConfig via super
         let config = AppConfig::load()?;
 
         // Verify pywal was auto-detected
