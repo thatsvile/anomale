@@ -89,6 +89,8 @@ Useful terminal popups bound in the same file: wifi (`wifitui`), `btop`,
 - Default terminal is `foot`; shell is `fish`.
 - Wallpapers live in `~/Pictures/wallpaper/`. Picking one through Anomale
   refreshes pywal colors for terminal, GTK, niri, and the SDDM background.
+  SDDM sync goes through a polkit helper (`/usr/local/lib/anomale/sddm-sync.sh`);
+  the theme directory stays root-owned and is not user-writable.
 - **niri:** `~/.config/niri/`
 - **Anomale:** `~/.config/anomale/` (`config.conf`, `menus.conf`, `notifications.conf`)
 - **pywal templates:** `~/.config/wal/templates/`
@@ -124,7 +126,8 @@ anomale/
     shell/                # Anomale Shell (Rust)
     .config/              # shipped user configs
     .local/bin/           # helpers (incl. anomale-apps) and session scripts
-    anomalous/            # SDDM theme
+    anomalous/            # SDDM theme (root-owned after install)
+    usr/local/lib/anomale/# privileged helpers (sddm-sync, splash, …)
     wallpaper/            # starter wallpapers
     pacmanlist.txt        # official packages the installer pulls
 ```

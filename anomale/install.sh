@@ -448,9 +448,17 @@ sudo bash -c "
 set -euo pipefail
 systemctl enable sddm
 systemctl set-default graphical.target
+install -d /usr/share/sddm/themes /usr/local/lib/anomale /etc/sddm.conf.d
+install -d /usr/share/polkit-1/actions /etc/polkit-1/rules.d
 cp -r \"$THE_STUFF/anomalous\" /usr/share/sddm/themes/
-cp \"$THE_STUFF/etc/sddm.conf\" /etc/sddm.conf
-chown -R \"$USER:$USER\" /usr/share/sddm/themes/anomalous
+# Keep theme root-owned; live colors/wallpaper are written by sddm-sync.sh.
+chown -R root:root /usr/share/sddm/themes/anomalous
+install -m 644 \"$THE_STUFF/etc/sddm.conf.d/10-anomale.conf\" /etc/sddm.conf.d/10-anomale.conf
+install -m 755 \"$THE_STUFF/usr/local/lib/anomale/sddm-sync.sh\" /usr/local/lib/anomale/sddm-sync.sh
+install -m 644 \"$THE_STUFF/usr/share/polkit-1/actions/com.anomale.sddm.sync.policy\" /usr/share/polkit-1/actions/com.anomale.sddm.sync.policy
+install -m 644 \"$THE_STUFF/etc/polkit-1/rules.d/10-anomale-sddm.rules\" /etc/polkit-1/rules.d/10-anomale-sddm.rules
+# Seed greeter from the installing user's pywal cache.
+SUDO_USER=\"$USER\" SUDO_UID=\"$(id -u)\" /usr/local/lib/anomale/sddm-sync.sh
 if [[ -f \"$THE_STUFF/splash-arch.bmp\" ]]; then
     install -d /usr/local/share/anomale /usr/local/lib/anomale /etc/pacman.d/hooks
     install -m 644 \"$THE_STUFF/splash-arch.bmp\" /usr/local/share/anomale/splash.bmp
@@ -468,10 +476,6 @@ if [[ -f \"$THE_STUFF/etc/librewolf/policies.json\" ]]; then
     /usr/local/lib/anomale/librewolf-pywalfox-policy.sh
 fi
 "
-
-# Theme dir is user-owned so these work without sudo (intentional).
-cp "$HOME/.cache/wal/sddm.conf" "/usr/share/sddm/themes/anomalous/theme.conf"
-cp "$(< "$HOME/.cache/wal/wal")" "/usr/share/sddm/themes/anomalous/background.jpg"
 
 fish << EOF
 if not contains "$HOME/.local/bin" \$fish_user_paths

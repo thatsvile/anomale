@@ -1,0 +1,7 @@
+// Allow active local sessions to sync Anomale pywal colors/wallpaper into SDDM
+// without an admin password (mirrors allow_active=yes on the action policy).
+polkit.addRule(function (action, subject) {
+    if (action.id == "com.anomale.sddm.sync" && subject.active && subject.local) {
+        return polkit.Result.YES;
+    }
+});

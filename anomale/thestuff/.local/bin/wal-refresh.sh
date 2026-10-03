@@ -13,9 +13,10 @@ systemctl --user start xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-por
 thunar --daemon &
 disown
 
-cp "$HOME/.cache/wal/sddm.conf" "/usr/share/sddm/themes/anomalous/theme.conf"
-
-cp "$(< "$HOME/.cache/wal/wal")" "/usr/share/sddm/themes/anomalous/background.jpg"
+# Sync pywal colors + wallpaper into the root-owned SDDM theme via polkit helper.
+if [[ -x /usr/local/lib/anomale/sddm-sync.sh ]]; then
+    pkexec /usr/local/lib/anomale/sddm-sync.sh
+fi
 
 # Push current pywal colors to LibreWolf/Firefox if Pywalfox is connected.
 command -v pywalfox >/dev/null 2>&1 && pywalfox update >/dev/null 2>&1 || true
