@@ -123,7 +123,10 @@ fi
 
 if ((changed == 1)) || [[ "${1:-}" == "--force-rebuild" ]]; then
     echo "anomale-splash: rebuilding initramfs/UKI images..."
-    mkinitcpio -P
+    if ! mkinitcpio -P >/dev/null; then
+        echo "anomale-splash: mkinitcpio -P failed" >&2
+        exit 1
+    fi
 else
     echo "anomale-splash: presets already point at $SPLASH"
 fi
