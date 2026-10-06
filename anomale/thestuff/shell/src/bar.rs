@@ -149,7 +149,7 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
     };
 
     format!(
-        "{18} {{
+        "{19} {{
             --bar-bg: {0};
             --font-family: '{1}';
             --font-color: {2};
@@ -161,6 +161,8 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
             --radius-br: {8}px;
             --border-width: {12}px {13}px {14}px {15}px;
             --border-color: {16};
+            --font-vert-align: {17}px;
+            --bullet-vert-align: {18}px;
         }}
         
         window {{
@@ -173,6 +175,8 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
             font-family: var(--font-family);
             font-size: var(--font-size);
             min-height: var(--bar-height);
+            height: var(--bar-height);
+            max-height: var(--bar-height);
             border-radius: var(--radius-tl) var(--radius-tr) var(--radius-br) var(--radius-bl);
             padding: 0;
             border-style: solid;
@@ -181,16 +185,22 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
             box-shadow: none;
         }}
 
-        {18} label {{
-            margin-top: {17}px;
+        {19} label {{
+            margin-top: 0;
             line-height: 1;
+            transform: translateY(var(--font-vert-align));
+        }}
+
+        {19} .tag .dot {{
+            margin-top: 0;
+            transform: translateY(var(--bullet-vert-align));
         }}
 
         {9}
         {10}
         {11}
-        {19}
-        {20}",
+        {20}
+        {21}",
         bar_color,                                          // 0
         config.font_family,                                 // 1
         config.font_color,                                  // 2
@@ -209,8 +219,9 @@ pub fn generate_css(config: &Config, monitor_name: Option<&str>) -> String {
         border_left,                                        // 15
         border_color,                                       // 16
         config.font_vert_align,                             // 17
-        bar_class,                                          // 18
-        include_str!("modules/resources/style.css"),         // 19
-        include_str!("modules/battery/style.css"),           // 20
+        config.bullet_vert_align,                           // 18
+        bar_class,                                          // 19
+        include_str!("modules/resources/style.css"),         // 20
+        include_str!("modules/battery/style.css"),           // 21
     )
 }

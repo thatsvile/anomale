@@ -29,6 +29,7 @@ pub struct Config {
     pub exec: Vec<String>,
     pub exec_once: Vec<String>,
     pub font_vert_align: i32,
+    pub bullet_vert_align: i32,
     pub volume_scroll_speed: f64,
     pub degree_symbol_font: Option<String>,
     pub charge_color: String,
@@ -61,6 +62,7 @@ impl Default for Config {
             exec: vec![],
             exec_once: vec![],
             font_vert_align: 2,
+            bullet_vert_align: 0,
             volume_scroll_speed: 5.0,
             degree_symbol_font: None,
             charge_color: "#00ff00ff".to_string(),
@@ -331,6 +333,11 @@ impl Config {
         if let Some(val) = properties.get("font_vert_align") {
             if let Ok(v) = val.parse() {
                 self.font_vert_align = v;
+            }
+        }
+        if let Some(val) = properties.get("bullet_vert_align") {
+            if let Ok(v) = val.parse() {
+                self.bullet_vert_align = v;
             }
         }
         if let Some(val) = properties.get("volume_scroll_speed") {
@@ -1362,6 +1369,31 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_vertical_align_config_parsing() -> Result<()> {
+        let cwd_temp = TempDir::new()?;
+        std::env::set_current_dir(&cwd_temp)?;
+
+        let temp_dir = TempDir::new()?;
+        let config_dir = temp_dir.path().join("anomale");
+        fs::create_dir_all(&config_dir)?;
+
+        std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
+
+        let config_path = config_dir.join("config.conf");
+        let mut file = fs::File::create(&config_path)?;
+        writeln!(file, "font_vert_align=5")?;
+        writeln!(file, "bullet_vert_align=3")?;
+
+        let config = Config::load(None)?;
+
+        assert_eq!(config.font_vert_align, 5);
+        assert_eq!(config.bullet_vert_align, 3);
+
+        Ok(())
+    }
+
     #[test]
     fn test_app_config_pywal_auto_detection() -> Result<()> {
         // Change CWD to a temp dir

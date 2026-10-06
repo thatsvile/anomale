@@ -1,0 +1,37 @@
+// Niri Pywal Template
+// Generated to ~/.cache/wal/niri-colors.kdl
+
+layout {
+    focus-ring {
+        active-color "#656566"
+        inactive-color "#101006"
+        urgent-color "#6b644b"
+    }
+
+    border {
+        active-color "#656566"
+        inactive-color "#101006"
+        urgent-color "#6b644b"
+    }
+
+    shadow {
+        color "#10100680"
+    }
+
+    tab-indicator {
+        active-color "#656566"
+        inactive-color "#101006"
+        urgent-color "#6b644b"
+    }
+
+    insert-hint {
+        color "#65656680"
+    }
+}
+
+overview {
+    backdrop-color "#101006"
+    workspace-shadow {
+        color "#10100650"
+    }
+}

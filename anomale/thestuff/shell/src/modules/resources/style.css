@@ -8,11 +8,6 @@
     padding: 0;
 }
 
-#bar-content .resource-cpu label,
-#bar-content .resource-gpu label {
-    margin-top: 0px; /* Counter-balance the text baseline shift from the sans degree symbol */
-}
-
 .resource-oom label {
     color: #ff0000;
 }
