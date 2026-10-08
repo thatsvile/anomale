@@ -87,28 +87,6 @@ install_pacman_packages() {
     sudo pacman -S --needed --noconfirm - < "$THE_STUFF/pacmanlist.txt"
 }
 
-setup_steam() {
-    echo "Configuring Steam launchers (niri menu fix)..."
-    if [[ ! -x "$HOME/.local/bin/steam-fixed" ]]; then
-        echo "ERROR: steam-fixed missing from ~/.local/bin after copy."
-        exit 1
-    fi
-    cat >"$HOME/.local/bin/steam" <<'EOF'
-#!/usr/bin/env bash
-exec "$HOME/.local/bin/steam-fixed" "$@"
-EOF
-    chmod +x "$HOME/.local/bin/steam"
-
-    mkdir -p "$HOME/.local/share/applications"
-    if [[ -f /usr/share/applications/steam.desktop ]]; then
-        sed -E "s|^Exec=/usr/bin/steam|Exec=${HOME}/.local/bin/steam-fixed|" \
-            /usr/share/applications/steam.desktop \
-            >"$HOME/.local/share/applications/steam.desktop"
-    else
-        echo "WARNING: /usr/share/applications/steam.desktop missing; skip desktop override."
-    fi
-}
-
 install_python_packages() {
     echo "Installing Python packages via pip..."
 
@@ -378,8 +356,6 @@ if [[ ! -f "$HOME/.local/bin/niri-start-nvidia.sh" || ! -f "$HOME/.local/bin/nir
     echo "ERROR: niri start scripts missing from ~/.local/bin after copy."
     exit 1
 fi
-
-setup_steam
 
 #set terminal
 fish -c "set -Ux TERMINAL foot"

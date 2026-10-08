@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-# PATH shim: prefer the niri menu-fixed Steam launcher over /usr/bin/steam.
-exec "$HOME/.local/bin/steam-fixed" "$@"
