@@ -283,18 +283,18 @@ binds {
     Ctrl+Left { focus-workspace-up; }
     Mod+Right { focus-workspace-down; }
     Ctrl+Right { focus-workspace-down; }
-    Ctrl+Mod+Left { move-workspace-up; }
-    Ctrl+Mod+Right { move-workspace-down; }
 
     // monitor switch (mango: SUPER+Alt)
     Mod+Alt+Left { move-workspace-to-monitor-left; }
     Mod+Alt+Right { move-workspace-to-monitor-right; }
 
-    // move floating window
+    // move window
     Ctrl+Shift+Up { spawn "niri" "msg" "action" "move-floating-window" "--y" "-50"; }
     Ctrl+Shift+Down { spawn "niri" "msg" "action" "move-floating-window" "--y" "+50"; }
     Ctrl+Shift+Left { spawn "niri" "msg" "action" "move-floating-window" "--x" "-50"; }
     Ctrl+Shift+Right { spawn "niri" "msg" "action" "move-floating-window" "--x" "+50"; }
+    Ctrl+Mod+Left { move-window-to-workspace-up; }
+    Ctrl+Mod+Right { move-window-to-workspace-down; }
 
     // resize floating window
     Ctrl+Alt+Up { spawn "niri" "msg" "action" "set-window-height" "-50"; }
