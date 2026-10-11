@@ -58,7 +58,7 @@ wlroots0.20
 xcb-util-wm
 xdg-desktop-portal
 xdg-desktop-portal-gtk
-xdg-desktop-portal-wlr
+xdg-desktop-portal-gnome
 xdg-user-dirs
 xdg-utils
 xf86-input-libinput
