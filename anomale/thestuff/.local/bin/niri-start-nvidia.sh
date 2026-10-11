@@ -6,7 +6,7 @@ export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export ELECTRON_OZONE_PLATFORM_HINT=auto
 export NVD_BACKEND=direct
 export GBM_BACKEND=nvidia-drm
-export XDG_CURRENT_DESKTOP=wlroots
+export XDG_CURRENT_DESKTOP=niri
 
 eval $(gnome-keyring-daemon --start --components=secrets)
 export SQLITE_TMPDIR=/tmp
