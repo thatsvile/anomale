@@ -10,6 +10,8 @@ sleep 0.2
 gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
 sleep 0.3
 systemctl --user start xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome
+pkill &
+bash ~/.local/bin/folder-col.sh
 disown
 
 # Sync pywal colors + wallpaper into the root-owned SDDM theme via polkit helper.
