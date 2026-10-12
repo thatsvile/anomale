@@ -45,9 +45,8 @@ slurp
 speech-dispatcher
 steam
 swaybg
-thunar
-thunar-archive-plugin
-thunar-volman
+nautilus
+yazi
 tumbler
 wayland
 wayland-protocols
