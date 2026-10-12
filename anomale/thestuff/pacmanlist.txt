@@ -76,3 +76,4 @@ github-cli
 papirus-icon-theme
 inetutils
 unzip
+jq
