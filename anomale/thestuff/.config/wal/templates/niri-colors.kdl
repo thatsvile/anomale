@@ -10,7 +10,7 @@ layout {
 
     border {
         active-color "{color6}"
-        inactive-color "{color0}"
+        inactive-color "{color0}00"
         urgent-color "{color1}"
     }
 
