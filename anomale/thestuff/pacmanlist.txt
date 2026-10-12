@@ -73,3 +73,5 @@ gst-plugins-bad
 gst-plugins-ugly
 xwayland-satellite
 github-cli
+papirus-icon-theme
+inetutils
