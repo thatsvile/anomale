@@ -314,6 +314,18 @@ mkdir -p "$HOME/.local/bin/"
 cp "$THE_STUFF/shell/target/release/anomale" "$HOME/.local/bin/"
 chmod +x "$HOME/.local/bin/anomale"
 
+mkdir -p "$HOME/.local/share/"
+mkdir -p "$HOME/.local/share/icons/"
+
+git clone https://aur.archlinux.org/papirus-folders-git.git "$THE_STUFF/papirus-folders-git/"
+(cd "$THE_STUFF/papirus-folders-git/" && makepkg -si)
+
+cp -a /usr/share/icons/Papirus "$HOME/.local/share/icons/Anomale-Papirus"
+
+sed -i 's/^Name=.*/Name=Anomale-Papirus/' "$HOME/.local/share/icons/Anomale-Papirus/index.theme"
+
+gsettings set org.gnome.desktop.interface icon-theme 'Anomale-Papirus'
+
 # Stamp shell tree so anomale-apps -update can skip rebuild when unchanged.
 stamp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/anomale/src"
 mkdir -p "$stamp_dir"
