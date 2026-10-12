@@ -346,3 +346,327 @@ entry:focus {{
     border-color: {color2};
     box-shadow: 0px 0px 0px 1px {color2};
 }}
+
+
+.nautilus-window headerbar,
+.nautilus-window .titlebar,
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .content-pane headerbar,
+.nautilus-window headerbar:backdrop,
+.nautilus-window:backdrop headerbar,
+.nautilus-window .sidebar-pane headerbar:backdrop,
+.nautilus-window .content-pane headerbar:backdrop {{
+    background: @bg_color;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+    border-bottom: 1px solid alpha({foreground}, 0.1);
+}}
+
+
+.nautilus-window headerbar {{
+    min-height: 0px;
+    padding: 3px 6px;
+}}
+
+
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .content-pane headerbar {{
+    min-height: 0px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}}
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    min-height: 28px;
+    min-width: 28px;
+    padding: 2px 6px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border-radius: 0px;
+    border: 1px solid alpha({foreground}, 0.1);
+    background-image: none;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+.nautilus-window headerbar button:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+.nautilus-window headerbar button:checked,
+.nautilus-window headerbar button:active {{
+    background-color: alpha({color2}, 0.22);
+    color: @fg_color;
+}}
+
+.nautilus-window headerbar button image,
+.nautilus-window headerbar button label,
+.nautilus-window headerbar:backdrop button image,
+.nautilus-window headerbar:backdrop button label {{
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar .windowcontrols button {{
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar entry,
+.nautilus-window headerbar searchentry {{
+    min-height: 28px;
+    padding: 2px 6px;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+}}
+
+.nautilus-window .sidebar-pane,
+.nautilus-window .sidebar-pane:backdrop,
+.nautilus-window .navigation-sidebar,
+.nautilus-window .navigation-sidebar:backdrop {{
+    background-color: @bg_color;
+    color: @fg_color;
+}}
+
+.nautilus-window headerbar title,
+.nautilus-window headerbar .title,
+.nautilus-window headerbar .subtitle,
+.nautilus-window headerbar:backdrop title,
+.nautilus-window headerbar:backdrop .title,
+.nautilus-window headerbar:backdrop .subtitle {{
+    color: @fg_color;
+}}
+
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .sidebar-pane .top-bar,
+.nautilus-window .sidebar-pane headerbar:backdrop {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: -2px;
+    margin-bottom: -2px;
+    border: none;
+    box-shadow: none;
+    background-color: @bg_color;
+    background-image: none;
+}}
+
+
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar .windowcontrols button,
+.nautilus-window headerbar button.close {{
+    min-height: 20px;
+    min-width: 28px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .content-pane headerbar,
+.nautilus-window .content-pane headerbar:backdrop {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    border: none;
+}}
+
+
+.nautilus-window .content-pane headerbar button,
+.nautilus-window .content-pane headerbar entry,
+.nautilus-window .content-pane headerbar searchentry,
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar button.close {{
+    min-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:hover,
+.nautilus-window headerbar button:active,
+.nautilus-window headerbar button:checked,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button:hover,
+.nautilus-window headerbar windowcontrols button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar .path-bar,
+.nautilus-window headerbar .path-bar .linked,
+.nautilus-window headerbar .path-bar button,
+.nautilus-window headerbar .path-bar button:hover,
+.nautilus-window headerbar .path-bar button:checked,
+.nautilus-window headerbar .path-bar button:active,
+.nautilus-window headerbar .path-bar button:backdrop,
+.nautilus-window headerbar .path-bar button:focus {{
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    border-radius: 0px;
+}}
+
+
+.nautilus-window .nautilus-path-bar,
+.nautilus-window .nautilus-path-bar > scrolledwindow,
+.nautilus-window .nautilus-path-bar scrolledwindow,
+.nautilus-window .path-bar-box,
+.nautilus-window .path-buttons-box {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .nautilus-path-bar scrolledwindow undershoot,
+.nautilus-window .nautilus-path-bar scrolledwindow overshoot,
+.nautilus-window .nautilus-path-bar .path-buttons-box button,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:hover,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:checked,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:backdrop {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .path-bar-box,
+.nautilus-window .path-bar-box.background,
+.nautilus-window .path-bar-box.frame,
+.nautilus-window .path-bar-box.background.frame,
+.nautilus-window .path-bar-box .nautilus-path-bar,
+.nautilus-window .path-bar-box .linked,
+.nautilus-window .path-bar-box .path-buttons-box,
+.nautilus-window headerbar .linked.nautilus-path-bar,
+.nautilus-window headerbar .linked.nautilus-path-bar button,
+.nautilus-window headerbar .path-buttons-box button,
+.nautilus-window headerbar .path-bar-box button,
+.nautilus-window headerbar .path-bar-box button:checked,
+.nautilus-window headerbar .path-bar-box button:hover,
+.nautilus-window headerbar .path-bar-box:backdrop,
+.nautilus-window headerbar .path-bar-box button:backdrop {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-image: none;
+    border-radius: 0px;
+    box-shadow: none;
+    outline: none;
+}}
+
+
+headerbar windowcontrols button.close,
+headerbar windowcontrols button.close:hover,
+headerbar windowcontrols button.close:backdrop,
+headerbar .windowcontrols button.close,
+windowcontrols button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+}}
+
+/* Higher specificity than the earlier v3/v4 close-button sizing. */
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar windowcontrols button.close:backdrop,
+.nautilus-window headerbar windowcontrols button.close:hover,
+.nautilus-window headerbar button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+}}
+
+stack#toolbar_switcher,
+stack#toolbar_switcher > box,
+stack#toolbar_switcher > box > box,
+stack#toolbar_switcher .linked,
+stack#toolbar_switcher scrolledwindow,
+stack#toolbar_switcher scrolledwindow > viewport,
+stack#toolbar_switcher .path-bar,
+stack#toolbar_switcher .nautilus-path-bar {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+stack#toolbar_switcher .linked button,
+stack#toolbar_switcher .nautilus-path-bar button,
+stack#toolbar_switcher .path-bar button {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+box.nautilus-pathbar,
+box.horizontal.linked.nautilus-pathbar,
+box.nautilus-pathbar > scrolledwindow {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+box.nautilus-pathbar > scrolledwindow > viewport,
+box.nautilus-pathbar > scrolledwindow undershoot {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
