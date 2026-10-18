@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage:
+  fpinstall -s QUERY     Search Flathub, pick a result, confirm, install
+  fpinstall uninstall    Pick an installed app, confirm, uninstall
+EOF
+}
+
+confirm() {
+  local answer
+  read -r -p "$1 [y/N] " answer
+  [[ ${answer,,} == y || ${answer,,} == yes ]]
+}
+
+pick() {
+  local prompt=$1
+  local lines=$2
+  local line name id
+  line=$(printf '%s\n' "$lines" | fzf --reverse --prompt="$prompt> ") || return 1
+  name=$(printf '%s\n' "$line" | cut -f1)
+  id=$(printf '%s\n' "$line" | cut -f2)
+  printf '%s\n' "$name" "$id"
+}
+
+search() {
+  local query=$*
+  [[ -n $query ]] || { usage >&2; exit 1; }
+  local lines
+  lines=$(flatpak search --columns=name,application,description -- "$query" || true)
+  [[ -n $lines ]] || { printf 'No matches.\n' >&2; exit 0; }
+  local chosen name id
+  chosen=$(pick "install" "$lines") || exit 0
+  name=$(printf '%s\n' "$chosen" | sed -n 1p)
+  id=$(printf '%s\n' "$chosen" | sed -n 2p)
+  confirm "Are you sure you want to install $name ($id)?" || exit 0
+  flatpak install flathub "$id"
+}
+
+uninstall() {
+  local lines
+  lines=$(flatpak list --app --columns=name,application || true)
+  [[ -n $lines ]] || { printf 'No Flatpak apps installed.\n' >&2; exit 0; }
+  local chosen name id
+  chosen=$(pick "uninstall" "$lines") || exit 0
+  name=$(printf '%s\n' "$chosen" | sed -n 1p)
+  id=$(printf '%s\n' "$chosen" | sed -n 2p)
+  confirm "Are you sure you want to uninstall $name ($id)?" || exit 0
+  flatpak uninstall "$id"
+}
+
+case ${1:-} in
+  -s)
+    shift
+    search "$@"
+    ;;
+  uninstall)
+    uninstall
+    ;;
+  -h|--help|help)
+    usage
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+esac
