@@ -670,3 +670,307 @@ box.nautilus-pathbar > scrolledwindow undershoot {{
     border-radius: 0px;
     box-shadow: none;
 }}
+
+/* --- GTK FILE CHOOSER / GNOME PORTAL HEADER MATCH --- */
+/*
+ * GtkFileChooserDialog uses window.filechooser (NO hyphen).
+ * The embedded chooser uses the CSS node filechooser. Unlike Nautilus,
+ * neither generally has .nautilus-window on its parent.
+ * Keep this block after the Nautilus rules so the picker is styled independently.
+ */
+
+/* Picker window and its top-level chrome. */
+window.filechooser,
+window.filechooser > box,
+window.filechooser .dialog-vbox,
+window.filechooser headerbar,
+window.filechooser .titlebar,
+window.filechooser headerbar:backdrop {{
+    background-color: @bg_color;
+    background-image: none;
+    color: @fg_color;
+}}
+
+window.filechooser headerbar,
+window.filechooser .titlebar {{
+    min-height: 0px;
+    padding: 3px 6px;
+    border-bottom: 1px solid alpha({foreground}, 0.1);
+    box-shadow: none;
+}}
+
+/* Keep controls compact, but retain usable targets and room for their icons. */
+window.filechooser headerbar button,
+window.filechooser headerbar button:backdrop,
+window.filechooser headerbar togglebutton {{
+    min-height: 28px;
+    min-width: 28px;
+    padding: 2px 6px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+window.filechooser headerbar button:hover,
+window.filechooser headerbar togglebutton:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+window.filechooser headerbar button:checked,
+window.filechooser headerbar button:active,
+window.filechooser headerbar togglebutton:checked {{
+    background-color: alpha({color2}, 0.22);
+}}
+
+window.filechooser headerbar button image,
+window.filechooser headerbar button label {{
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+/* Match the rounded, small window close control from Nautilus. */
+window.filechooser headerbar windowcontrols button.close,
+window.filechooser headerbar button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+}}
+
+/* Save filename and header search/location entries. */
+window.filechooser headerbar entry,
+window.filechooser headerbar searchentry,
+window.filechooser headerbar entry:backdrop {{
+    min-height: 28px;
+    padding: 2px 6px;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+}}
+
+/* Internal location toolbar is not a Nautilus headerbar. */
+window.filechooser filechooser toolbar,
+window.filechooser filechooser .toolbar,
+window.filechooser filechooser #pathbarbox,
+window.filechooser filechooser .path-bar,
+window.filechooser filechooser .path-bar-container {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: @bg_color;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}
+
+window.filechooser filechooser .path-bar button,
+window.filechooser filechooser #pathbarbox button,
+window.filechooser filechooser toolbar button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    border-radius: 0px;
+    border: none;
+    background-color: transparent;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+window.filechooser filechooser .path-bar button:hover,
+window.filechooser filechooser #pathbarbox button:hover,
+window.filechooser filechooser toolbar button:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+window.filechooser filechooser .path-bar button:checked,
+window.filechooser filechooser #pathbarbox button:checked {{
+    background-color: alpha({color2}, 0.22);
+}}
+
+window.filechooser filechooser #pathbarbox entry,
+window.filechooser filechooser #pathbarbox searchentry,
+window.filechooser filechooser .location-entry {{
+    min-height: 24px;
+    padding: 2px 6px;
+    border-radius: 0px;
+}}
+
+/* The dialog action area: compact and squared, without touching Nautilus. */
+window.filechooser .dialog-action-area,
+window.filechooser actionbar {{
+    background-color: @bg_color;
+    border-top: 1px solid alpha({foreground}, 0.1);
+    padding: 6px;
+}}
+
+window.filechooser .dialog-action-area button,
+window.filechooser actionbar button {{
+    min-height: 28px;
+    padding: 2px 10px;
+    border-radius: 0px;
+}}
+
+window.filechooser .dialog-action-area button.suggested-action,
+window.filechooser actionbar button.suggested-action {{
+    background-color: {color2};
+    color: {background};
+    border: none;
+}}
+
+
+/* ================================================================
+ * GTK4 / LIBADWAITA FILE PICKER HEADER - COMPACT, FLAT CONTROLS
+ * ================================================================
+ * GNOME 47+ can expose a Nautilus-backed file chooser rather than
+ * GtkFileChooserDialog. Unlike earlier patches these selectors DO NOT
+ * assume the root is window.filechooser.
+ *
+ * Intentional scope: all GTK headerbars. This is necessary to catch
+ * portal windows with varying root CSS classes. It also gives other
+ * GTK apps the same compact, flat toolbar treatment as Nautilus.
+ * The existing .nautilus-window rules above retain their specifics.
+ */
+
+/* Match the height and padding of the clean Nautilus header. */
+window headerbar,
+window .titlebar,
+window headerbar windowhandle {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: @bg_color;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+/* Header contents, not just headerbar itself, can hold extra padding. */
+window headerbar windowhandle > box,
+window headerbar box.start,
+window headerbar box.end {{
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}}
+
+/* IMPORTANT: menu, toggle and split button children are distinct CSS
+ * nodes. Target actual button nodes, not only their wrapping widget. */
+window headerbar button,
+window headerbar togglebutton,
+window headerbar menubutton > button,
+window headerbar splitbutton > button,
+window headerbar splitbutton button,
+window headerbar .linked > button,
+window headerbar .path-bar button,
+window headerbar .nautilus-pathbar button,
+window headerbar .nautilus-path-bar button,
+window headerbar .path-buttons-box button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+/* Remove the box effect on grouping widgets and navigation paths. */
+window headerbar .linked,
+window headerbar .path-bar,
+window headerbar .nautilus-pathbar,
+window headerbar .nautilus-path-bar,
+window headerbar .path-bar-box,
+window headerbar .path-buttons-box,
+window headerbar .navigation-buttons,
+window headerbar splitbutton,
+window headerbar menubutton {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+window headerbar button:hover,
+window headerbar menubutton > button:hover,
+window headerbar splitbutton > button:hover {{
+    background-color: alpha({foreground}, 0.09);
+}}
+window headerbar button:checked,
+window headerbar button:active {{
+    background-color: alpha({color2}, 0.17);
+}}
+
+window headerbar entry,
+window headerbar searchentry {{
+    min-height: 24px;
+    padding: 0px 5px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    box-shadow: none;
+}}
+
+/* GTK's window-control button gets special sizing and shape. */
+window headerbar windowcontrols button.close,
+window headerbar .windowcontrols button.close {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px;
+    margin: 0px;
+    border: none;
+    border-radius: 999px;
+    background-color: alpha({foreground}, 0.10);
+    box-shadow: none;
+}}
+window headerbar windowcontrols button.close:hover,
+window headerbar .windowcontrols button.close:hover {{
+    background-color: alpha({foreground}, 0.19);
+}}
+
+/* If the picker has a separate navigation toolbar under the titlebar,
+ * match its controls too, regardless of the root window class. */
+filechooser toolbar button,
+filechooser toolbar menubutton > button,
+filechooser .path-bar button,
+filechooser #pathbarbox button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+}}
+
+filechooser toolbar,
+filechooser #pathbarbox,
+filechooser .path-bar,
+filechooser .path-bar-container {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}
