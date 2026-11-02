@@ -99,9 +99,10 @@ Useful terminal popups bound in the same file: wifi (`wifitui`), `pulsemixer`.
 - **vile:** `~/.config/vile/` (`config.json`, recipes, templates, vilefox.json)
 - **templates:** `~/.config/wal/templates/` and `~/.config/vile/colors/templates/`
 
-Open the signed vilefox XPI once per browser profile if LibreWolf does not
-already have it (`~/.local/share/vilefox/vilefox-signed.xpi` after `vilefox install`).
-Disable pywalfox if it is still installed.
+LibreWolf auto-installs the signed vilefox add-on via policies
+(`normal_installed` from `/usr/local/share/vile/vilefox-signed.xpi`). Firefox
+still needs the XPI opened once (`~/.local/share/vilefox/vilefox-signed.xpi`
+after `vilefox install`). Disable pywalfox if it is still installed.
 
 ## Maintenance (`vile-apps`)
 

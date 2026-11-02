@@ -1,8 +1,22 @@
 {
   "policies": {
     "ExtensionSettings": {
+      "vilefox@vile": {
+        "installation_mode": "normal_installed",
+        "install_url": "file:///usr/local/share/vile/vilefox-signed.xpi"
+      },
       "pywalfox@frewacom.org": {
         "installation_mode": "blocked"
+      }
+    },
+    "Preferences": {
+      "browser.nova.enabled": {
+        "Value": false,
+        "Status": "default"
+      },
+      "toolkit.legacyUserProfileCustomizations.stylesheets": {
+        "Value": true,
+        "Status": "default"
       }
     }
   }

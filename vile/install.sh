@@ -286,8 +286,6 @@ cp -a /usr/share/icons/Papirus "$HOME/.local/share/icons/Vile-Papirus"
 
 sed -i 's/^Name=.*/Name=Vile-Papirus/' "$HOME/.local/share/icons/Vile-Papirus/index.theme"
 
-gsettings set org.gnome.desktop.interface icon-theme 'Vile-Papirus'
-
 # Stamp viledesktop tree so vile-apps update can skip rebuild when unchanged.
 stamp_dir="${XDG_CACHE_HOME:-$HOME/.cache}/vile/src"
 mkdir -p "$stamp_dir"
@@ -320,6 +318,17 @@ EOF
 mkdir -p "$HOME/.local/bin/"
 cp -r "$THE_STUFF/.local/bin/." "$HOME/.local/bin/"
 chmod +x "$HOME/.local/bin/"*
+
+# nwg-look apply DB + export so GTK/xsettings/gtkrc match Vile-Papirus defaults.
+mkdir -p "$HOME/.local/share/nwg-look"
+cp -f "$THE_STUFF/.local/share/nwg-look/gsettings" "$HOME/.local/share/nwg-look/gsettings"
+if command -v nwg-look >/dev/null 2>&1; then
+    nwg-look -a
+    nwg-look -x
+fi
+gsettings set org.gnome.desktop.interface icon-theme 'Vile-Papirus'
+gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark'
+gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 
 # Ensure NVIDIA/non-NVIDIA start scripts are present before the GPU prompt.
 if [[ ! -f "$HOME/.local/bin/niri-start-nvidia.sh" || ! -f "$HOME/.local/bin/niri-start-nonvidia.sh" ]]; then
@@ -374,6 +383,11 @@ cfg["colors_apply_commands"] = cfg.pop("_install_saved_colors_apply_commands", [
 p.write_text(json.dumps(cfg, indent=2) + "\n")
 PY
 "$HOME/.local/bin/vilefox" install
+
+# Seed Papirus folder colors now that wal cache exists (skipped during colors seed).
+if [[ -x "$HOME/.local/bin/folder-col.sh" ]]; then
+    bash "$HOME/.local/bin/folder-col.sh" || true
+fi
 
 # gtk wal-compat symlinks (vilecolors writes ~/.cache/vile/wal and links ~/.cache/wal)
 rm -f "$HOME/.config/gtk-4.0/gtk.css"
@@ -464,6 +478,12 @@ if [[ -f \"$THE_STUFF/etc/librewolf/policies.json\" ]]; then
     install -m 644 \"$THE_STUFF/etc/librewolf/policies.json\" /usr/local/share/vile/librewolf-policies.json
     install -m 755 \"$THE_STUFF/usr/local/lib/vile/librewolf-policy.sh\" /usr/local/lib/vile/librewolf-policy.sh
     install -m 644 \"$THE_STUFF/etc/pacman.d/hooks/vile-librewolf-policy.hook\" /etc/pacman.d/hooks/vile-librewolf-policy.hook
+    # Stable path for ExtensionSettings install_url (also staged under ~/.local/share/vilefox).
+    if [[ -f \"$HOME/.local/share/vilefox/vilefox-signed.xpi\" ]]; then
+        install -m 644 \"$HOME/.local/share/vilefox/vilefox-signed.xpi\" /usr/local/share/vile/vilefox-signed.xpi
+    elif [[ -f \"$VILE_ROOT/vilefox/vilefox-signed.xpi\" ]]; then
+        install -m 644 \"$VILE_ROOT/vilefox/vilefox-signed.xpi\" /usr/local/share/vile/vilefox-signed.xpi
+    fi
     /usr/local/lib/vile/librewolf-policy.sh
 fi
 "

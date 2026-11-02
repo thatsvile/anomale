@@ -51,11 +51,18 @@ vilefox install
 
 or from this workspace: `cargo run -p vilefox --release -- install`
 
+LibreWolf installs the signed add-on automatically when vile policies are
+merged (`normal_installed` → `file:///usr/local/share/vile/vilefox-signed.xpi`).
+You can remove it from the browser if you want; it is not force-locked.
+
 Then once per profile:
 
-1. Open `~/.local/share/vilefox/vilefox-signed.xpi` in Firefox/LibreWolf (this crate also keeps `vilefox-signed.xpi`)
-2. `about:config` → `toolkit.legacyUserProfileCustomizations.stylesheets` = `true`
-3. Restart the browser so `userChrome.css` loads
+1. Firefox only: open `~/.local/share/vilefox/vilefox-signed.xpi` (this crate also keeps `vilefox-signed.xpi`)
+2. Restart the browser so `userChrome.css` loads (`vilefox install` writes
+   `toolkit.legacyUserProfileCustomizations.stylesheets` into each profile `user.js`;
+   LibreWolf policies also default that pref on)
 
-Replace `vilefox/vilefox-signed.xpi` when AMO signs a new version, then run `vilefox install` again.
+Replace `vilefox/vilefox-signed.xpi` when AMO signs a new version, then run
+`vilefox install` again and refresh `/usr/local/share/vile/vilefox-signed.xpi`
+(plus re-run the LibreWolf policy merge) on installed systems.
 Disable pywalfox if it is still calling `theme.update`.

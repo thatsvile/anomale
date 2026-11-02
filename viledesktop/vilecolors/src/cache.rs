@@ -3,7 +3,7 @@ use std::fs;
 use std::io::{self, IsTerminal, Write};
 use std::os::unix::fs::symlink;
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use crate::map::Palette;
 use crate::template::{collect_templates, render};
@@ -21,6 +21,11 @@ pub fn export_palette(palette: &Palette) -> Result<()> {
 }
 
 /// Run `config.colors_apply_commands` after a successful colors export. Failures are logged only.
+///
+/// Child stdout/stderr are discarded so chatty hooks (e.g. papirus-folders via
+/// vile-refresh) cannot corrupt an in-process colorlab / ratatui alternate screen.
+/// Commands are spawned in the background so colorlab is not blocked on
+/// `vile-refresh.sh` sleeps / papirus-folders / pkexec.
 fn run_colors_apply_commands() {
     let Ok(cfg) = load_config() else {
         return;
@@ -31,15 +36,40 @@ fn run_colors_apply_commands() {
             continue;
         }
         let expanded = expand_command(cmd);
-        match Command::new("sh").arg("-c").arg(&expanded).status() {
-            Ok(status) if status.success() => {}
-            Ok(status) => {
-                eprintln!(
-                    "vilecolors: colors_apply_commands failed ({status}): {expanded}"
-                );
+        match Command::new("sh")
+            .arg("-c")
+            .arg(&expanded)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+        {
+            Ok(mut child) => {
+                let expanded = expanded.clone();
+                std::thread::spawn(move || match child.wait() {
+                    Ok(status) if status.success() => {}
+                    Ok(status) => {
+                        if !io::stderr().is_terminal() {
+                            eprintln!(
+                                "vilecolors: colors_apply_commands failed ({status}): {expanded}"
+                            );
+                        }
+                    }
+                    Err(err) => {
+                        if !io::stderr().is_terminal() {
+                            eprintln!(
+                                "vilecolors: colors_apply_commands wait failed: {err}: {expanded}"
+                            );
+                        }
+                    }
+                });
             }
             Err(err) => {
-                eprintln!("vilecolors: colors_apply_commands spawn failed: {err}: {expanded}");
+                if !io::stderr().is_terminal() {
+                    eprintln!(
+                        "vilecolors: colors_apply_commands spawn failed: {err}: {expanded}"
+                    );
+                }
             }
         }
     }

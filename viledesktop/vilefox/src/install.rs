@@ -70,8 +70,8 @@ pub fn run() -> Result<()> {
     println!("wrote userChrome.css to {chrome_dirs} profile chrome/ dirs");
     println!("edit chrome mapping {}", cfg.display());
     println!("signed add-on {}", xpi.display());
-    println!("open that .xpi in Firefox/LibreWolf if the add-on is not already installed");
-    println!("once: about:config toolkit.legacyUserProfileCustomizations.stylesheets = true");
+    println!("LibreWolf installs it via policies (normal_installed); Firefox: open that .xpi once");
+    println!("user.js enables toolkit.legacyUserProfileCustomizations.stylesheets for userChrome.css");
     println!("disable pywalfox if it is still theming the browser");
     Ok(())
 }
@@ -142,8 +142,11 @@ fn write_user_chrome(path: &Path, cfg: &crate::map::FoxConfig) -> Result<()> {
     fs::write(path, body).with_context(|| format!("writing {}", path.display()))
 }
 
-const USER_JS: &str =
-    "/* BEGIN VILEFOX */\nuser_pref(\"widget.gtk.native-context-menus\", false);\n/* END VILEFOX */\n";
+const USER_JS: &str = "\
+/* BEGIN VILEFOX */\n\
+user_pref(\"widget.gtk.native-context-menus\", false);\n\
+user_pref(\"toolkit.legacyUserProfileCustomizations.stylesheets\", true);\n\
+/* END VILEFOX */\n";
 
 fn write_user_js(path: &Path) -> Result<()> {
     let existing = fs::read_to_string(path).unwrap_or_default();
