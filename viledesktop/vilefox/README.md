@@ -32,8 +32,12 @@ Restart the browser after changing them. Color maps still apply live.
 | key | meaning |
 | --- | --- |
 | `tab_outline_px` | selected-tab outline thickness (1–8) |
-| `corner_radius_px` | tabs, url bar, panels, buttons (`0` = square) |
+| `corner_radius_px` | tabs, url bar, results panel, panels, buttons (`0` = square) |
 | `urlbar_border_px` | URL field border (0–4) |
+
+Focus ring / results selection use theme colors (`toolbar_field_border_focus`,
+`popup_highlight`, …). `corner_radius_px: 0` also forces `--urlbar-border-radius`
+and related tokens so the address bar stays square.
 | `compact_tabs` | shorter tab strip |
 | `tab_close` | `"always"` or `"hover"` |
 | `tab_bar_margin_px` | extra left/right padding on the tab strip |

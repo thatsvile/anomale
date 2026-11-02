@@ -311,9 +311,12 @@ mod tests {
         assert!(css.contains("outline-offset: -3px"));
         assert!(css.contains("height: 4px"));
         assert!(css.contains("--tab-border-radius: 0px"));
+        assert!(css.contains("--urlbar-border-radius: 0px"));
+        assert!(css.contains("--focus-outline-color"));
         assert!(css.contains("padding-inline: 2px"));
         assert!(css.contains("#urlbar-background"));
         assert!(css.contains("--menu-background-color"));
+        assert!(css.contains(".urlbarView"));
         assert!(!css.contains("__OUTLINE_PX__"));
         assert!(!css.contains("__TAB_BAR_MARGIN_PX__"));
         assert!(!css.contains("__COMPACT__"));
@@ -329,5 +332,13 @@ mod tests {
         assert!(css.contains("--tab-min-height: 28px"));
         assert!(css.contains(".tab-close-button"));
         assert!(css.contains("--tab-border-radius: 8px"));
+        assert!(css.contains("--urlbar-border-radius: 8px"));
+    }
+
+    #[test]
+    fn chrome_defaults_include_field_focus_border() {
+        let cfg = crate::map::default_config();
+        assert_eq!(cfg.dark.get("toolbar_field_border_focus").unwrap(), "color10");
+        assert_eq!(cfg.dark.get("toolbar_field_text_focus").unwrap(), "color15");
     }
 }

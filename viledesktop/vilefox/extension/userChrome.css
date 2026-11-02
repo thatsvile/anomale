@@ -2,15 +2,42 @@
 :root {
   --tab-border-radius: __RADIUS_PX__px !important;
   --toolbarbutton-border-radius: __RADIUS_PX__px !important;
+  --button-border-radius: __RADIUS_PX__px !important;
   --arrowpanel-border-radius: __RADIUS_PX__px !important;
   --panel-border-radius: __RADIUS_PX__px !important;
+  --popup-border-radius: __RADIUS_PX__px !important;
   --urlbar-icon-border-radius: __RADIUS_PX__px !important;
+  --urlbar-border-radius: __RADIUS_PX__px !important;
+  --urlbarview-border-radius: __RADIUS_PX__px !important;
+  --urlbar-inner-border-radius: __RADIUS_PX__px !important;
+  --urlbar-background-border-radius: __RADIUS_PX__px !important;
+  --border-radius-small: __RADIUS_PX__px !important;
+  --border-radius-medium: __RADIUS_PX__px !important;
   --menu-background-color: var(--arrowpanel-background, var(--lwt-accent-color)) !important;
   --menu-color: var(--arrowpanel-color, var(--lwt-text-color)) !important;
   --menuitem-hover-background-color: var(--button-hover-bgcolor, var(--lwt-tab-line-color)) !important;
   --panel-background: var(--arrowpanel-background, var(--lwt-accent-color)) !important;
   --panel-color: var(--arrowpanel-color, var(--lwt-text-color)) !important;
   --panel-border-color: var(--arrowpanel-border-color, var(--toolbar-field-border-color)) !important;
+  /* Kill Firefox brand blue/cyan focus ring; use theme accent / field-focus border. */
+  --focus-outline-color: var(
+    --toolbar-field-border-color-focus,
+    var(--lwt-tab-line-color, var(--toolbar-color, AccentColor))
+  ) !important;
+  --focus-outline: var(--focus-outline-width, 2px) solid var(--focus-outline-color) !important;
+  --urlbarview-background-color-hover: color-mix(
+    in srgb,
+    var(--lwt-tab-line-color, currentColor) 18%,
+    transparent
+  ) !important;
+  --urlbarview-background-color-selected: var(
+    --arrowpanel-dimmed-further,
+    var(--lwt-toolbar-field-highlight, var(--lwt-tab-line-color, SelectedItem))
+  ) !important;
+  --urlbarview-text-color-selected: var(
+    --lwt-toolbar-field-highlight-text,
+    var(--lwt-accent-color, SelectedItemText)
+  ) !important;
 }
 #TabsToolbar,
 #tabbrowser-tabs {
@@ -23,6 +50,9 @@
 #urlbar[breakout][breakout-extend] > #urlbar-background,
 #searchbar,
 .urlbarView,
+.urlbarView-body-inner,
+.urlbarView-row,
+.urlbarView-row-inner,
 menupopup,
 .menupopup-arrowscrollbox,
 panel[type="arrow"] {
@@ -66,6 +96,40 @@ menuseparator {
 #urlbar-background {
   border-style: solid !important;
   border-width: __URLBAR_BORDER_PX__px !important;
+  border-radius: __RADIUS_PX__px !important;
+}
+/* Focus / open: theme border, not brand accent outline. */
+#urlbar[focused] > #urlbar-background,
+#urlbar[open] > #urlbar-background,
+#urlbar:is([focused], [open]) > .urlbar-input-container {
+  outline: none !important;
+  box-shadow: none !important;
+}
+#urlbar[focused] > #urlbar-background,
+#urlbar[open] > #urlbar-background {
+  border-color: var(
+    --toolbar-field-border-color-focus,
+    var(--lwt-tab-line-color, var(--toolbar-field-border-color))
+  ) !important;
+}
+/* Address-bar results panel: keep palette colors, square corners when radius is 0. */
+.urlbarView {
+  background-color: var(
+    --toolbar-field-focus-background-color,
+    var(--toolbar-field-background-color, var(--lwt-accent-color))
+  ) !important;
+  color: var(--toolbar-field-focus-color, var(--toolbar-field-color, var(--lwt-text-color))) !important;
+  border-color: var(--toolbar-field-border-color-focus, var(--toolbar-field-border-color)) !important;
+}
+.urlbarView .urlbarView-body-outer,
+.urlbarView .urlbarView-body-inner,
+.urlbarView .urlbarView-results {
+  background-color: transparent !important;
+  border-radius: __RADIUS_PX__px !important;
+}
+.urlbarView .urlbarView-row[selected],
+.urlbarView .urlbarView-row:hover {
+  border-radius: __RADIUS_PX__px !important;
 }
 __COMPACT__
 __TAB_CLOSE__

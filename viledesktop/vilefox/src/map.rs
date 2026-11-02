@@ -173,7 +173,13 @@ fn chrome(frame: &str, raised: &str, ink: &str, accent: &str, accent2: &str) -> 
         ("toolbar_field".into(), frame.into()),
         ("toolbar_field_text".into(), ink.into()),
         ("toolbar_field_border".into(), raised.into()),
-        ("toolbar_field_focus".into(), raised.into()),
+        // Same as normal field fill — raised/color8 reads too light in the urlbar.
+        ("toolbar_field_focus".into(), frame.into()),
+        // Without these, Firefox falls back to brand blue (#0061e0 / #00ddff) on focus.
+        ("toolbar_field_border_focus".into(), accent.into()),
+        ("toolbar_field_text_focus".into(), ink.into()),
+        ("toolbar_field_highlight".into(), accent.into()),
+        ("toolbar_field_highlight_text".into(), frame.into()),
         ("toolbar_top_separator".into(), frame.into()),
         ("toolbar_bottom_separator".into(), frame.into()),
         ("toolbar_vertical_separator".into(), frame.into()),
