@@ -18,11 +18,13 @@ pub fn load_wallpaper(path: &Path, target_edge: u32) -> Result<RgbaImage> {
             .to_rgba8()
     };
     let long = img.width().max(img.height());
-    if long > target_edge.saturating_mul(2) {
+    // Downscale oversized sources to the display long edge with a real filter.
+    // Keeps steady-state RAM near one buffer-sized RGBA copy without Nearest jaggies.
+    if long > target_edge {
         let scale = target_edge as f64 / long as f64;
         let w = ((img.width() as f64 * scale).round() as u32).max(1);
         let h = ((img.height() as f64 * scale).round() as u32).max(1);
-        img = image::imageops::resize(&img, w, h, FilterType::Nearest);
+        img = image::imageops::resize(&img, w, h, FilterType::Triangle);
     }
     Ok(img)
 }
@@ -38,12 +40,11 @@ fn idct_out(len: u32, scale: u32) -> u32 {
 }
 
 /// Request the smallest JPEG IDCT (1/8, 1/4, 1/2, 1) whose long edge still
-/// covers 3/4 of `target_edge`. Matches jpeg-decoder's output-size formula so
+/// covers `target_edge`. Matches jpeg-decoder's output-size formula so
 /// `Decoder::scale` actually picks that IDCT instead of falling back to full-res.
 pub(crate) fn jpeg_scale_request(native_w: u32, native_h: u32, target_edge: u32) -> (u16, u16) {
     let clamp = |v: u32| v.max(1).min(u32::from(u16::MAX)) as u16;
-    let min_long = target_edge.saturating_mul(3) / 4;
-    let min_long = min_long.max(1);
+    let min_long = target_edge.max(1);
     let native_w = native_w.max(1);
     let native_h = native_h.max(1);
     let mut chosen = 8u32;
@@ -161,9 +162,10 @@ mod tests {
     use super::{idct_out, jpeg_scale_request};
 
     #[test]
-    fn jpeg_scale_allows_half_for_4782_on_1440p() {
+    fn jpeg_scale_keeps_full_when_half_undershoots_target() {
+        // Half IDCT is 2391 < 2560, so stay at full and let Triangle downscale.
         let (w, h) = jpeg_scale_request(4782, 2690, 2560);
-        assert_eq!((w, h), (2391, 1345));
+        assert_eq!((w, h), (4782, 2690));
         assert_eq!(idct_out(4782, 4), 2391);
         assert_eq!(idct_out(2690, 4), 1345);
     }
@@ -175,13 +177,14 @@ mod tests {
     }
 
     #[test]
-    fn jpeg_scale_uses_quarter_for_huge_source() {
+    fn jpeg_scale_uses_half_when_it_covers_target() {
+        // Half of 8000 is 4000 >= 2560; quarter (2000) would undershoot.
         let (w, h) = jpeg_scale_request(8000, 6000, 2560);
-        assert_eq!((w, h), (idct_out(8000, 2) as u16, idct_out(6000, 2) as u16));
+        assert_eq!((w, h), (idct_out(8000, 4) as u16, idct_out(6000, 4) as u16));
     }
 
     #[test]
-    fn loads_sample_wallpaper_at_half_res() {
+    fn loads_sample_wallpaper_near_target() {
         let path = "/home/jor/anomale/vile/thestuff/wallpaper/851628.jpg";
         if !std::path::Path::new(path).exists() {
             return;
@@ -210,14 +213,21 @@ mod tests {
             img.width(),
             img.height()
         );
+        let long = img.width().max(img.height());
         assert!(
-            img.width() <= 2500 && img.height() <= 1400,
-            "expected ~half-res, got {}x{}",
+            long <= 2560,
+            "expected long edge <= target, got {}x{}",
             img.width(),
             img.height()
         );
         assert!(
-            decode + blit < std::time::Duration::from_millis(1500),
+            long >= 2000,
+            "expected near-target decode, got {}x{}",
+            img.width(),
+            img.height()
+        );
+        assert!(
+            decode + blit < std::time::Duration::from_millis(2500),
             "decode {decode:.0?} blit {blit:.0?} too slow"
         );
     }

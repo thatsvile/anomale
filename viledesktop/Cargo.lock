@@ -2710,6 +2710,7 @@ dependencies = [
  "env_logger",
  "image",
  "jpeg-decoder",
+ "libc",
  "log",
  "serde_json",
  "smithay-client-toolkit",

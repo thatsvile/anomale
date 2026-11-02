@@ -217,29 +217,57 @@ fn sample_rect(
     let raw = image.as_raw();
     let max_x = (img_w - 1) as f64;
     let max_y = (img_h - 1) as f64;
+    let last_x = img_w - 1;
+    let last_y = img_h - 1;
     let dest_w_i = dest_w as i32;
     let dest_h_i = dest_h as i32;
+    let row_stride = img_w as usize * 4;
     for y in 0..dh {
         let py = dy + y as i32;
         if py < 0 || py >= dest_h_i {
             continue;
         }
-        let fv = sy + (y as f64 + 0.5) * sh / dh as f64;
-        let iy = fv.floor().clamp(0.0, max_y) as u32;
-        let src_row = (iy * img_w) as usize * 4;
+        // Texel-center mapping + bilinear; avoids jagged edges from nearest.
+        let fv = (sy + (y as f64 + 0.5) * sh / dh as f64 - 0.5).clamp(0.0, max_y);
+        let iy0 = fv.floor() as u32;
+        let iy1 = (iy0 + 1).min(last_y);
+        let ty = fv - iy0 as f64;
+        let row0 = iy0 as usize * row_stride;
+        let row1 = iy1 as usize * row_stride;
         let di_row = (py as u32 * dest_w) as usize * 4;
         for x in 0..dw {
             let px = dx + x as i32;
             if px < 0 || px >= dest_w_i {
                 continue;
             }
-            let fu = sx + (x as f64 + 0.5) * sw / dw as f64;
-            let ix = fu.floor().clamp(0.0, max_x) as u32;
-            let si = src_row + ix as usize * 4;
+            let fu = (sx + (x as f64 + 0.5) * sw / dw as f64 - 0.5).clamp(0.0, max_x);
+            let ix0 = fu.floor() as u32;
+            let ix1 = if ix0 < last_x { ix0 + 1 } else { last_x };
+            let tx = fu - ix0 as f64;
+            let i00 = row0 + ix0 as usize * 4;
+            let i10 = row0 + ix1 as usize * 4;
+            let i01 = row1 + ix0 as usize * 4;
+            let i11 = row1 + ix1 as usize * 4;
             let di = di_row + px as usize * 4;
-            canvas[di] = raw[si + 2];
-            canvas[di + 1] = raw[si + 1];
-            canvas[di + 2] = raw[si];
+            let w00 = (1.0 - tx) * (1.0 - ty);
+            let w10 = tx * (1.0 - ty);
+            let w01 = (1.0 - tx) * ty;
+            let w11 = tx * ty;
+            let r = raw[i00] as f64 * w00
+                + raw[i10] as f64 * w10
+                + raw[i01] as f64 * w01
+                + raw[i11] as f64 * w11;
+            let g = raw[i00 + 1] as f64 * w00
+                + raw[i10 + 1] as f64 * w10
+                + raw[i01 + 1] as f64 * w01
+                + raw[i11 + 1] as f64 * w11;
+            let b = raw[i00 + 2] as f64 * w00
+                + raw[i10 + 2] as f64 * w10
+                + raw[i01 + 2] as f64 * w01
+                + raw[i11 + 2] as f64 * w11;
+            canvas[di] = b.round().clamp(0.0, 255.0) as u8;
+            canvas[di + 1] = g.round().clamp(0.0, 255.0) as u8;
+            canvas[di + 2] = r.round().clamp(0.0, 255.0) as u8;
             canvas[di + 3] = 255;
         }
     }

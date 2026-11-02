@@ -12,6 +12,7 @@ calloop-wayland-source = "0.4"
 env_logger.workspace = true
 image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 jpeg-decoder = "0.3"
+libc = "0.2"
 log.workspace = true
 serde_json.workspace = true
 smithay-client-toolkit = "0.21.1"

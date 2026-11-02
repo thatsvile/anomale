@@ -4,6 +4,7 @@ mod decode;
 use std::os::fd::AsFd;
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -24,7 +25,7 @@ use smithay_client_toolkit::shell::wlr_layer::{
     LayerSurfaceConfigure,
 };
 use smithay_client_toolkit::shell::WaylandSurface;
-use smithay_client_toolkit::shm::slot::SlotPool;
+use smithay_client_toolkit::shm::slot::{Buffer, SlotPool};
 use smithay_client_toolkit::shm::{Shm, ShmHandler};
 use smithay_client_toolkit::{delegate_registry, registry_handlers};
 use vile_protocol::{
@@ -37,9 +38,23 @@ use wayland_client::{Connection, Proxy, QueueHandle};
 
 use crate::blit::{render_into, OutputRect};
 
+/// Front + back SHM buffers per output. Required: niri only releases a buffer
+/// when a different one is attached, so single-buffer + wait-for-release deadlocks.
+const MAX_SURFACE_BUFFERS: usize = 2;
+
 struct Args {
     img: Option<PathBuf>,
     mode: Option<WallpaperMode>,
+}
+
+struct DecodeRequest {
+    path: String,
+    target_edge: u32,
+}
+
+fn trim_heaps() {
+    // Decode peaks leave glibc arenas mapped; ask the allocator to return empty pages.
+    let _ = unsafe { libc::malloc_trim(0) };
 }
 
 fn main() -> Result<()> {
@@ -72,6 +87,30 @@ fn main() -> Result<()> {
         })
         .map_err(|err| anyhow::anyhow!("inserting decode channel: {err}"))?;
 
+    // One long-lived decode worker so glibc arenas aren't created per wallpaper.
+    let (decode_req_tx, decode_req_rx) = mpsc::channel::<DecodeRequest>();
+    let decode_result_tx = decode_tx.clone();
+    thread::Builder::new()
+        .name("vilewall-decode".into())
+        .spawn(move || {
+            while let Ok(req) = decode_req_rx.recv() {
+                let started = Instant::now();
+                let image =
+                    crate::decode::load_wallpaper(std::path::Path::new(&req.path), req.target_edge)
+                        .map_err(|err| err.to_string());
+                trim_heaps();
+                if let Err(err) = decode_result_tx.send(DecodeResult {
+                    path: req.path,
+                    image,
+                    elapsed: started.elapsed(),
+                }) {
+                    warn!("decode result send failed: {err}");
+                    break;
+                }
+            }
+        })
+        .context("spawning decode worker")?;
+
     handle
         .insert_source(
             Timer::from_duration(Duration::from_millis(200)),
@@ -102,7 +141,7 @@ fn main() -> Result<()> {
         image: None,
         wanted_path: args.img.as_ref().map(|p| p.to_string_lossy().into_owned()),
         mode,
-        decode_tx,
+        decode_req_tx,
         decode_inflight: false,
         decoding_path: None,
     };
@@ -188,8 +227,8 @@ struct App {
     image: Option<RgbaImage>,
     wanted_path: Option<String>,
     mode: WallpaperMode,
-    decode_tx: channel::Sender<DecodeResult>,
-    /// True while a decode thread is outstanding for `decoding_path`.
+    decode_req_tx: mpsc::Sender<DecodeRequest>,
+    /// True while a decode is outstanding for `decoding_path`.
     decode_inflight: bool,
     decoding_path: Option<String>,
 }
@@ -204,6 +243,8 @@ struct WallSurface {
     height: u32,
     scale: u32,
     configured: bool,
+    /// Double-buffered SHM slots; never allocate more than [`MAX_SURFACE_BUFFERS`].
+    buffers: Vec<Buffer>,
 }
 
 struct SocketConn {
@@ -236,20 +277,12 @@ impl App {
         }
         self.decode_inflight = true;
         self.decoding_path = Some(path.clone());
-        let tx = self.decode_tx.clone();
-        let target = self.decode_target_edge();
-        thread::spawn(move || {
-            let started = Instant::now();
-            let image = crate::decode::load_wallpaper(std::path::Path::new(&path), target)
-                .map_err(|err| err.to_string());
-            if let Err(err) = tx.send(DecodeResult {
-                path,
-                image,
-                elapsed: started.elapsed(),
-            }) {
-                warn!("decode result send failed: {err}");
-            }
-        });
+        let target_edge = self.decode_target_edge();
+        if let Err(err) = self.decode_req_tx.send(DecodeRequest { path, target_edge }) {
+            self.decode_inflight = false;
+            self.decoding_path = None;
+            warn!("decode request send failed: {err}");
+        }
     }
 
     fn on_decoded(&mut self, result: DecodeResult) {
@@ -275,16 +308,15 @@ impl App {
                     result.elapsed
                 );
                 self.image = Some(image);
+                trim_heaps();
                 self.draw_all();
-                // SHM buffers stay attached for display; drop the CPU raster copy.
-                self.image = None;
             }
             Err(err) => warn!("decode {}: {err}", result.path),
         }
     }
 
     fn ensure_decoded(&mut self) {
-        if self.image.is_some() {
+        if self.image.is_some() || self.decode_inflight {
             return;
         }
         if let Some(path) = self.wanted_path.clone() {
@@ -365,6 +397,7 @@ impl App {
             height: 0,
             scale,
             configured: false,
+            buffers: Vec::new(),
         });
     }
 
@@ -412,51 +445,79 @@ impl App {
     }
 
     fn draw_index(&mut self, index: usize) {
-        let Some(image) = self.image.as_ref() else {
-            return;
-        };
-        let surface = &self.surfaces[index];
-        if !surface.configured || surface.width == 0 || surface.height == 0 {
+        if self.image.is_none() {
             return;
         }
-        let scale = surface.scale.max(1);
-        let buf_w = surface.width * scale;
-        let buf_h = surface.height * scale;
-        let stride = buf_w as i32 * 4;
-        let needed = stride as usize * buf_h as usize;
         let all = self.all_rects();
-        let geom = surface.geom;
         let mode = self.mode;
+        let (scale, buf_w, buf_h, stride, geom, configured) = {
+            let surface = &self.surfaces[index];
+            let scale = surface.scale.max(1);
+            let buf_w = surface.width * scale;
+            let buf_h = surface.height * scale;
+            (
+                scale,
+                buf_w,
+                buf_h,
+                buf_w as i32 * 4,
+                surface.geom,
+                surface.configured,
+            )
+        };
+        if !configured || buf_w == 0 || buf_h == 0 {
+            return;
+        }
 
-        if self.pool.len() < needed {
-            if let Err(err) = self
-                .pool
-                .resize(needed.max(self.pool.len().saturating_mul(2)))
-            {
-                warn!("shm pool resize failed: {err}");
-                return;
+        let App {
+            pool,
+            surfaces,
+            image,
+            ..
+        } = self;
+        let surface = &mut surfaces[index];
+        let image = image.as_ref().unwrap();
+
+        // Size change: drop buffers so their slots can return to the freelist.
+        surface
+            .buffers
+            .retain(|b| b.height() == buf_h as i32 && b.stride() == stride);
+
+        let free = surface
+            .buffers
+            .iter()
+            .position(|b| !b.slot().has_active_buffers());
+        if free.is_none() && surface.buffers.len() >= MAX_SURFACE_BUFFERS {
+            // Both slots still held; rare for wallpaper — skip this frame.
+            return;
+        }
+        if free.is_none() {
+            match pool.create_buffer(
+                buf_w as i32,
+                buf_h as i32,
+                stride,
+                wl_shm::Format::Argb8888,
+            ) {
+                Ok((buffer, _)) => surface.buffers.push(buffer),
+                Err(err) => {
+                    warn!("create buffer failed: {err}");
+                    return;
+                }
             }
         }
-        let (buffer, canvas) = match self.pool.create_buffer(
-            buf_w as i32,
-            buf_h as i32,
-            stride,
-            wl_shm::Format::Argb8888,
-        ) {
-            Ok(pair) => pair,
-            Err(err) => {
-                warn!("create buffer failed: {err}");
+        let buf_index = free.unwrap_or(surface.buffers.len() - 1);
+        {
+            let Some(canvas) = surface.buffers[buf_index].canvas(pool) else {
                 return;
-            }
-        };
-        render_into(image, mode, canvas, buf_w, buf_h, geom, &all, scale);
+            };
+            render_into(image, mode, canvas, buf_w, buf_h, geom, &all, scale);
+        }
 
-        let layer = &self.surfaces[index].layer;
+        let layer = &surface.layer;
         let _ = layer.set_buffer_scale(scale);
         layer
             .wl_surface()
             .damage_buffer(0, 0, buf_w as i32, buf_h as i32);
-        if let Err(err) = buffer.attach_to(layer.wl_surface()) {
+        if let Err(err) = surface.buffers[buf_index].attach_to(layer.wl_surface()) {
             warn!("buffer attach failed: {err}");
             return;
         }
