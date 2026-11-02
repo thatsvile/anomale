@@ -1,0 +1,76 @@
+{
+  "mode_timeout_ms": 2500,
+  "terminal": "foot",
+  "wallpaper": {
+    "mode": "fill",
+    "monitors": ["*"],
+    "directory": "~/Pictures/wallpaper"
+  },
+  "screenshot": {
+    "save": false,
+    "directory": "~/Pictures",
+    "clipboard_seconds": 20
+  },
+  "animations": {
+    "enabled": true,
+    "transition_frames": 3,
+    "navigation_frames": 6,
+    "frame_ms": 25
+  },
+  "notifications": {
+    "enabled": true,
+    "side": "right",
+    "toast_ms": 2000,
+    "history": 24
+  },
+  "tray": {
+    "enabled": true
+  },
+  "menu": {
+    "enabled": true,
+    "items": [
+      { "label": "shutdown", "command": "systemctl poweroff" },
+      { "label": "log out", "command": "niri msg action quit --skip-confirmation" },
+      { "label": "reboot", "command": "systemctl reboot" }
+    ]
+  },
+  "colors_apply_commands": [
+    "niri msg action load-config-file",
+    "~/.local/bin/vile-refresh.sh"
+  ],
+  "bars": [
+    {
+      "name": "main",
+      "position": "top",
+      "monitors": ["*"],
+      "height": 24,
+      "margin_vertical": 4,
+      "margin_horizontal": 8,
+      "padding_vertical": 0,
+      "padding_horizontal": 0,
+      "border": 2,
+      "corner_radius": 0,
+      "font": "0xProto Nerd Font Mono",
+      "foreground": "color6",
+      "background": "color0",
+      "volume_overlay": "both",
+      "battery_overlay": "both",
+      "volume_style": "meter",
+      "battery_style": "meter",
+      "mem_style": "meter",
+      "mem_overlay": "both",
+      "cpu_style": "meter",
+      "cpu_metric": "temp",
+      "cpu_overlay": "both",
+      "gpu_style": "meter",
+      "gpu_metric": "temp",
+      "gpu_overlay": "both",
+      "clock_format": "%I:%M:%S %p",
+      "modules": {
+        "left": ["clock", "workspaces"],
+        "center": [],
+        "right": ["cpu", "mem", "volume", "battery", "notifications"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,976 @@
+/* --- PYWAL-GTK3/4 COMPREHENSIVE THEME --- */
+
+/* Primary Palette Mapping */
+@define-color bg_color {background};
+@define-color fg_color {foreground};
+@define-color base_color {background};
+@define-color text_color {foreground};
+@define-color selected_bg_color {color2};
+@define-color selected_fg_color {background}; 
+@define-color accent_color {color2};
+@define-color accent_bg_color {color2};
+@define-color accent_fg_color {background};
+
+/* Modern Libadwaita & GTK4 Compatibility */
+@define-color window_bg_color @bg_color;
+@define-color window_fg_color @fg_color;
+@define-color view_bg_color @bg_color;
+@define-color view_fg_color @fg_color;
+@define-color headerbar_bg_color @bg_color;
+@define-color headerbar_fg_color @fg_color;
+@define-color card_bg_color alpha(@fg_color, 0.05);
+@define-color card_fg_color @fg_color;
+@define-color popover_bg_color @bg_color;
+@define-color popover_fg_color @fg_color;
+@define-color dialog_bg_color @bg_color;
+@define-color dialog_fg_color @fg_color;
+
+.thunar toolbar {
+    padding: 5px;
+    min-height: 0px;
+}
+.thunar toolbar * {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+.thunar toolbar .image-button image {
+    -gtk-icon-transform: scale(0.8);
+}
+.thunar toolbar .location-button image {
+    -gtk-icon-transform: scale(0.8);
+}
+.thunar toolbar entry {
+    min-height: 20px;
+}
+.thunar toolbar button {
+    border-radius: 0px;
+}
+.thunar toolbar entry {
+    border-radius: 0px;
+}
+
+/* --- GLOBAL UI & DIALOG CLEANUP --- */
+* {{
+    outline-width: 0px;
+    -gtk-secondary-caret-color: {color2};
+}}
+
+window.dialog, 
+window.modal, 
+.file-chooser,
+messagedialog {{
+    background-color: @bg_color;
+    color: @fg_color;
+}}
+
+decoration {{
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.5); 
+    border: 1px solid alpha({foreground}, 0.1);
+    margin: 0;
+}}
+
+/* --- TITLEBAR & HEADERBAR (The Gray Fix) --- */
+headerbar, 
+.titlebar,
+window.dialog.headerbar,
+window.modal.headerbar,
+messagedialog headerbar {{
+    background-image: none;
+    background-color: @bg_color;
+    color: @fg_color;
+    box-shadow: none;
+    border-bottom: 1px solid alpha({foreground}, 0.1);
+}}
+
+headerbar button, 
+.titlebar button {{
+    background-color: alpha({foreground}, 0.05);
+    border: 1px solid alpha({foreground}, 0.1);
+    color: @fg_color;
+    border-radius: 0px;
+}}
+
+/* --- SIDEBARS (The "Weird Border" Fix) --- */
+.sidebar, 
+placessidebar, 
+.file-chooser .sidebar,
+sidebartreeview,
+stacksidebar {{
+    background-color: @bg_color;
+    color: @fg_color;
+    border: none;
+}}
+
+/* Compact sidebar rows */
+.sidebar row, 
+placessidebar row,
+placessidebar row.sidebar-new-row-style,
+.navigation-sidebar > row,
+row.sidebar-row {{
+    padding: 0px;
+    margin: 0px 2px;
+    min-height: 26px;
+    border-radius: 0px;
+    border: none;
+    background-image: none;
+}}
+
+/* GTK4 placessidebar puts padding on the inner revealer */
+placessidebar row > revealer,
+.sidebar row > revealer,
+.navigation-sidebar > row > revealer {{
+    padding: 2px 8px;
+}}
+
+/* File picker sidebar — tighter spacing */
+.file-chooser placessidebar row,
+filechooser placessidebar row {{
+    min-height: 24px;
+    margin: 0px;
+}}
+
+.file-chooser placessidebar row > revealer,
+filechooser placessidebar row > revealer {{
+    padding: 1px 6px;
+}}
+
+.sidebar row:selected, 
+placessidebar row:selected,
+.navigation-sidebar > row:selected {{
+    background-color: {color2};
+    color: {background};
+    border-radius: 0px;
+    transition: all 150ms ease;
+}}
+
+.sidebar row:hover, 
+placessidebar row:hover {{
+    background-color: alpha({foreground}, 0.08);
+}}
+
+/* Fix for sidebar buttons/icons */
+.sidebar button,
+placessidebar button {{
+    background-image: none;
+    border: none;
+    color: @fg_color;
+}}
+
+/* --- MAIN FILE VIEW & SELECTIONS --- */
+.view, iconview, treeview {{
+    background-color: @bg_color;
+    color: @fg_color;
+}}
+
+.view:selected, 
+iconview:selected, 
+treeview:selected,
+.view:selected:focus, 
+iconview:selected:focus,
+treeview:selected:focus,
+listview row:selected,
+gridview item:selected,
+filechooser listview row:selected,
+filechooser gridview item:selected {{
+    background-color: {color2};
+    color: {background};
+    border-radius: 0px;
+}}
+
+/* Thunar icon/thumbnail selection */
+.thunar .standard-view .view:selected,
+.thunar .standard-view iconview:selected,
+.thunar iconview.view:selected,
+.thunar .view:selected,
+.thunar .view:selected:focus,
+.thunar iconview:selected:focus,
+.thunar iconview .label:selected,
+.thunar .standard-view .view .label:selected {{
+    background-color: {color2};
+    color: {background};
+    border-radius: 0px;
+}}
+
+/* Selection Rectangle */
+rubberband, .rubberband {{
+    background-color: alpha({color2}, 0.3);
+    border: 1px solid {color2};
+}}
+
+/* --- PATH BAR & BREADCRUMBS --- */
+.file-chooser #pathbarbox,
+filechooser #pathbarbox,
+.file-chooser .path-bar-container,
+.path-bar {{
+    background-color: @bg_color;
+    min-height: 0px;
+    padding: 0px 4px;
+}}
+
+/* Compact breadcrumb buttons */
+.file-chooser .path-bar button,
+filechooser .path-bar.linked > button,
+.path-bar button {{
+    background-image: none;
+    background-color: alpha({foreground}, 0.05);
+    border: 1px solid transparent;
+    margin: 0px 1px;
+    min-height: 20px;
+    padding: 0px 4px;
+    border-radius: 0px;
+    color: @fg_color;
+}}
+
+.path-bar button.text-button,
+.path-bar button.image-button {{
+    padding-left: 4px;
+    padding-right: 4px;
+}}
+
+.path-bar button label:first-child {{
+    padding-left: 4px;
+}}
+
+.path-bar button label:last-child {{
+    padding-right: 4px;
+}}
+
+.path-bar button.image-button,
+.path-bar button.slider-button {{
+    min-width: 20px;
+    padding: 0px 2px;
+}}
+
+/* Search entry shares the pathbar stack and sets its height even when hidden */
+.file-chooser #pathbarbox entry,
+filechooser #pathbarbox entry,
+filechooser #pathbarbox search,
+filechooser #pathbarbox .search {{
+    min-height: 0px;
+    padding: 0px 4px;
+}}
+
+.path-bar button:checked {{
+    background-color: {color2};
+    color: {background};
+}}
+
+.path-bar button:hover {{
+    background-color: alpha({color2}, 0.2);
+}}
+
+/* --- ACTION AREA (Bottom of File Picker) --- */
+.file-chooser .dialog-action-area {{
+    background-color: @bg_color;
+    padding: 12px;
+    border-top: 1px solid alpha({foreground}, 0.1);
+}}
+
+/* Highlight the 'Open' or 'Save' button */
+.file-chooser .dialog-action-area button.suggested-action {{
+    background-color: {color2};
+    color: {background};
+    border: none;
+    font-weight: bold;
+}}
+
+/* --- DIALOG / PORTAL / AUTH BUTTONS --- */
+/* GTK4 / libadwaita default button radius */
+* {{
+    --button-radius: 0px;
+}}
+
+window.dialog button,
+window.modal button,
+dialog button,
+messagedialog button,
+.file-chooser .dialog-action-area button,
+filechooser .dialog-action-area button,
+.dialog-action-area button,
+.dialog-action-box button,
+messagedialog.csd .dialog-action-area button,
+messagedialog.csd .dialog-action-area button:first-child,
+messagedialog.csd .dialog-action-area button:last-child,
+messagedialog.csd .dialog-action-area button:only-child,
+window.dialog .dialog-action-area button:first-child,
+window.dialog .dialog-action-area button:last-child,
+window.dialog .dialog-action-area button:only-child,
+button.suggested-action,
+button.destructive-action,
+button.pill {{
+    border-radius: 0px;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 0px;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+}}
+
+/* Adwaita sets GTK3 outline radii on message-dialog action buttons */
+messagedialog.csd .dialog-action-area button,
+messagedialog.csd .dialog-action-area button:first-child,
+messagedialog.csd .dialog-action-area button:last-child,
+messagedialog.csd .dialog-action-area button:only-child {{
+    -gtk-outline-top-left-radius: 0px;
+    -gtk-outline-top-right-radius: 0px;
+    -gtk-outline-bottom-left-radius: 0px;
+    -gtk-outline-bottom-right-radius: 0px;
+}}
+
+/* --- SCROLLBARS --- */
+scrollbar {{
+    background-color: transparent;
+}}
+
+scrollbar slider {{
+    background-color: alpha({foreground}, 0.2);
+    border-radius: 0px;
+    min-width: 6px;
+    min-height: 6px;
+    margin: 2px;
+}}
+
+scrollbar slider:hover {{
+    background-color: alpha({color2}, 0.8);
+}}
+
+/* --- INPUTS & SEARCH --- */
+entry {{
+    background-color: alpha({foreground}, 0.05);
+    border: 1px solid alpha({foreground}, 0.1);
+    border-radius: 0px;
+    color: @fg_color;
+    padding: 6px;
+}}
+
+entry:focus {{
+    border-color: {color2};
+    box-shadow: 0px 0px 0px 1px {color2};
+}}
+
+
+.nautilus-window headerbar,
+.nautilus-window .titlebar,
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .content-pane headerbar,
+.nautilus-window headerbar:backdrop,
+.nautilus-window:backdrop headerbar,
+.nautilus-window .sidebar-pane headerbar:backdrop,
+.nautilus-window .content-pane headerbar:backdrop {{
+    background: @bg_color;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+    border-bottom: 1px solid alpha({foreground}, 0.1);
+}}
+
+
+.nautilus-window headerbar {{
+    min-height: 0px;
+    padding: 3px 6px;
+}}
+
+
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .content-pane headerbar {{
+    min-height: 0px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}}
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    min-height: 28px;
+    min-width: 28px;
+    padding: 2px 6px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border-radius: 0px;
+    border: 1px solid alpha({foreground}, 0.1);
+    background-image: none;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+.nautilus-window headerbar button:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+.nautilus-window headerbar button:checked,
+.nautilus-window headerbar button:active {{
+    background-color: alpha({color2}, 0.22);
+    color: @fg_color;
+}}
+
+.nautilus-window headerbar button image,
+.nautilus-window headerbar button label,
+.nautilus-window headerbar:backdrop button image,
+.nautilus-window headerbar:backdrop button label {{
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar .windowcontrols button {{
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar entry,
+.nautilus-window headerbar searchentry {{
+    min-height: 28px;
+    padding: 2px 6px;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+}}
+
+.nautilus-window .sidebar-pane,
+.nautilus-window .sidebar-pane:backdrop,
+.nautilus-window .navigation-sidebar,
+.nautilus-window .navigation-sidebar:backdrop {{
+    background-color: @bg_color;
+    color: @fg_color;
+}}
+
+.nautilus-window headerbar title,
+.nautilus-window headerbar .title,
+.nautilus-window headerbar .subtitle,
+.nautilus-window headerbar:backdrop title,
+.nautilus-window headerbar:backdrop .title,
+.nautilus-window headerbar:backdrop .subtitle {{
+    color: @fg_color;
+}}
+
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .sidebar-pane headerbar,
+.nautilus-window .sidebar-pane .top-bar,
+.nautilus-window .sidebar-pane headerbar:backdrop {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: -2px;
+    margin-bottom: -2px;
+    border: none;
+    box-shadow: none;
+    background-color: @bg_color;
+    background-image: none;
+}}
+
+
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar .windowcontrols button,
+.nautilus-window headerbar button.close {{
+    min-height: 20px;
+    min-width: 28px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .content-pane headerbar,
+.nautilus-window .content-pane headerbar:backdrop {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    border: none;
+}}
+
+
+.nautilus-window .content-pane headerbar button,
+.nautilus-window .content-pane headerbar entry,
+.nautilus-window .content-pane headerbar searchentry,
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar button.close {{
+    min-height: 20px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar button,
+.nautilus-window headerbar button:hover,
+.nautilus-window headerbar button:active,
+.nautilus-window headerbar button:checked,
+.nautilus-window headerbar button:backdrop,
+.nautilus-window headerbar windowcontrols button,
+.nautilus-window headerbar windowcontrols button:hover,
+.nautilus-window headerbar windowcontrols button:backdrop,
+.nautilus-window:backdrop headerbar button {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}
+
+
+.nautilus-window headerbar .path-bar,
+.nautilus-window headerbar .path-bar .linked,
+.nautilus-window headerbar .path-bar button,
+.nautilus-window headerbar .path-bar button:hover,
+.nautilus-window headerbar .path-bar button:checked,
+.nautilus-window headerbar .path-bar button:active,
+.nautilus-window headerbar .path-bar button:backdrop,
+.nautilus-window headerbar .path-bar button:focus {{
+    background: transparent;
+    background-image: none;
+    box-shadow: none;
+    border: none;
+    border-radius: 0px;
+}}
+
+
+.nautilus-window .nautilus-path-bar,
+.nautilus-window .nautilus-path-bar > scrolledwindow,
+.nautilus-window .nautilus-path-bar scrolledwindow,
+.nautilus-window .path-bar-box,
+.nautilus-window .path-buttons-box {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .nautilus-path-bar scrolledwindow undershoot,
+.nautilus-window .nautilus-path-bar scrolledwindow overshoot,
+.nautilus-window .nautilus-path-bar .path-buttons-box button,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:hover,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:checked,
+.nautilus-window .nautilus-path-bar .path-buttons-box button:backdrop {{
+    background: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+.nautilus-window .path-bar-box,
+.nautilus-window .path-bar-box.background,
+.nautilus-window .path-bar-box.frame,
+.nautilus-window .path-bar-box.background.frame,
+.nautilus-window .path-bar-box .nautilus-path-bar,
+.nautilus-window .path-bar-box .linked,
+.nautilus-window .path-bar-box .path-buttons-box,
+.nautilus-window headerbar .linked.nautilus-path-bar,
+.nautilus-window headerbar .linked.nautilus-path-bar button,
+.nautilus-window headerbar .path-buttons-box button,
+.nautilus-window headerbar .path-bar-box button,
+.nautilus-window headerbar .path-bar-box button:checked,
+.nautilus-window headerbar .path-bar-box button:hover,
+.nautilus-window headerbar .path-bar-box:backdrop,
+.nautilus-window headerbar .path-bar-box button:backdrop {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-image: none;
+    border-radius: 0px;
+    box-shadow: none;
+    outline: none;
+}}
+
+
+headerbar windowcontrols button.close,
+headerbar windowcontrols button.close:hover,
+headerbar windowcontrols button.close:backdrop,
+headerbar .windowcontrols button.close,
+windowcontrols button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+}}
+
+/* Higher specificity than the earlier v3/v4 close-button sizing. */
+.nautilus-window headerbar windowcontrols button.close,
+.nautilus-window headerbar windowcontrols button.close:backdrop,
+.nautilus-window headerbar windowcontrols button.close:hover,
+.nautilus-window headerbar button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+}}
+
+stack#toolbar_switcher,
+stack#toolbar_switcher > box,
+stack#toolbar_switcher > box > box,
+stack#toolbar_switcher .linked,
+stack#toolbar_switcher scrolledwindow,
+stack#toolbar_switcher scrolledwindow > viewport,
+stack#toolbar_switcher .path-bar,
+stack#toolbar_switcher .nautilus-path-bar {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+stack#toolbar_switcher .linked button,
+stack#toolbar_switcher .nautilus-path-bar button,
+stack#toolbar_switcher .path-bar button {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+
+box.nautilus-pathbar,
+box.horizontal.linked.nautilus-pathbar,
+box.nautilus-pathbar > scrolledwindow {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+box.nautilus-pathbar > scrolledwindow > viewport,
+box.nautilus-pathbar > scrolledwindow undershoot {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+/* --- GTK FILE CHOOSER / GNOME PORTAL HEADER MATCH --- */
+/*
+ * GtkFileChooserDialog uses window.filechooser (NO hyphen).
+ * The embedded chooser uses the CSS node filechooser. Unlike Nautilus,
+ * neither generally has .nautilus-window on its parent.
+ * Keep this block after the Nautilus rules so the picker is styled independently.
+ */
+
+/* Picker window and its top-level chrome. */
+window.filechooser,
+window.filechooser > box,
+window.filechooser .dialog-vbox,
+window.filechooser headerbar,
+window.filechooser .titlebar,
+window.filechooser headerbar:backdrop {{
+    background-color: @bg_color;
+    background-image: none;
+    color: @fg_color;
+}}
+
+window.filechooser headerbar,
+window.filechooser .titlebar {{
+    min-height: 0px;
+    padding: 3px 6px;
+    border-bottom: 1px solid alpha({foreground}, 0.1);
+    box-shadow: none;
+}}
+
+/* Keep controls compact, but retain usable targets and room for their icons. */
+window.filechooser headerbar button,
+window.filechooser headerbar button:backdrop,
+window.filechooser headerbar togglebutton {{
+    min-height: 28px;
+    min-width: 28px;
+    padding: 2px 6px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+window.filechooser headerbar button:hover,
+window.filechooser headerbar togglebutton:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+window.filechooser headerbar button:checked,
+window.filechooser headerbar button:active,
+window.filechooser headerbar togglebutton:checked {{
+    background-color: alpha({color2}, 0.22);
+}}
+
+window.filechooser headerbar button image,
+window.filechooser headerbar button label {{
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+/* Match the rounded, small window close control from Nautilus. */
+window.filechooser headerbar windowcontrols button.close,
+window.filechooser headerbar button.close {{
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0px;
+    margin: 0px;
+    border-radius: 999px;
+    border: none;
+    box-shadow: none;
+}}
+
+/* Save filename and header search/location entries. */
+window.filechooser headerbar entry,
+window.filechooser headerbar searchentry,
+window.filechooser headerbar entry:backdrop {{
+    min-height: 28px;
+    padding: 2px 6px;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    color: @fg_color;
+}}
+
+/* Internal location toolbar is not a Nautilus headerbar. */
+window.filechooser filechooser toolbar,
+window.filechooser filechooser .toolbar,
+window.filechooser filechooser #pathbarbox,
+window.filechooser filechooser .path-bar,
+window.filechooser filechooser .path-bar-container {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: @bg_color;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}
+
+window.filechooser filechooser .path-bar button,
+window.filechooser filechooser #pathbarbox button,
+window.filechooser filechooser toolbar button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    border-radius: 0px;
+    border: none;
+    background-color: transparent;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+window.filechooser filechooser .path-bar button:hover,
+window.filechooser filechooser #pathbarbox button:hover,
+window.filechooser filechooser toolbar button:hover {{
+    background-color: alpha({foreground}, 0.12);
+}}
+
+window.filechooser filechooser .path-bar button:checked,
+window.filechooser filechooser #pathbarbox button:checked {{
+    background-color: alpha({color2}, 0.22);
+}}
+
+window.filechooser filechooser #pathbarbox entry,
+window.filechooser filechooser #pathbarbox searchentry,
+window.filechooser filechooser .location-entry {{
+    min-height: 24px;
+    padding: 2px 6px;
+    border-radius: 0px;
+}}
+
+/* The dialog action area: compact and squared, without touching Nautilus. */
+window.filechooser .dialog-action-area,
+window.filechooser actionbar {{
+    background-color: @bg_color;
+    border-top: 1px solid alpha({foreground}, 0.1);
+    padding: 6px;
+}}
+
+window.filechooser .dialog-action-area button,
+window.filechooser actionbar button {{
+    min-height: 28px;
+    padding: 2px 10px;
+    border-radius: 0px;
+}}
+
+window.filechooser .dialog-action-area button.suggested-action,
+window.filechooser actionbar button.suggested-action {{
+    background-color: {color2};
+    color: {background};
+    border: none;
+}}
+
+
+/* ================================================================
+ * GTK4 / LIBADWAITA FILE PICKER HEADER - COMPACT, FLAT CONTROLS
+ * ================================================================
+ * GNOME 47+ can expose a Nautilus-backed file chooser rather than
+ * GtkFileChooserDialog. Unlike earlier patches these selectors DO NOT
+ * assume the root is window.filechooser.
+ *
+ * Intentional scope: all GTK headerbars. This is necessary to catch
+ * portal windows with varying root CSS classes. It also gives other
+ * GTK apps the same compact, flat toolbar treatment as Nautilus.
+ * The existing .nautilus-window rules above retain their specifics.
+ */
+
+/* Match the height and padding of the clean Nautilus header. */
+window headerbar,
+window .titlebar,
+window headerbar windowhandle {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: @bg_color;
+    background-image: none;
+    color: @fg_color;
+    box-shadow: none;
+}}
+
+/* Header contents, not just headerbar itself, can hold extra padding. */
+window headerbar windowhandle > box,
+window headerbar box.start,
+window headerbar box.end {{
+    padding-top: 0px;
+    padding-bottom: 0px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}}
+
+/* IMPORTANT: menu, toggle and split button children are distinct CSS
+ * nodes. Target actual button nodes, not only their wrapping widget. */
+window headerbar button,
+window headerbar togglebutton,
+window headerbar menubutton > button,
+window headerbar splitbutton > button,
+window headerbar splitbutton button,
+window headerbar .linked > button,
+window headerbar .path-bar button,
+window headerbar .nautilus-pathbar button,
+window headerbar .nautilus-path-bar button,
+window headerbar .path-buttons-box button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+    color: @fg_color;
+    -gtk-icon-shadow: none;
+}}
+
+/* Remove the box effect on grouping widgets and navigation paths. */
+window headerbar .linked,
+window headerbar .path-bar,
+window headerbar .nautilus-pathbar,
+window headerbar .nautilus-path-bar,
+window headerbar .path-bar-box,
+window headerbar .path-buttons-box,
+window headerbar .navigation-buttons,
+window headerbar splitbutton,
+window headerbar menubutton {{
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    border-radius: 0px;
+    box-shadow: none;
+}}
+
+window headerbar button:hover,
+window headerbar menubutton > button:hover,
+window headerbar splitbutton > button:hover {{
+    background-color: alpha({foreground}, 0.09);
+}}
+window headerbar button:checked,
+window headerbar button:active {{
+    background-color: alpha({color2}, 0.17);
+}}
+
+window headerbar entry,
+window headerbar searchentry {{
+    min-height: 24px;
+    padding: 0px 5px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: alpha({foreground}, 0.05);
+    box-shadow: none;
+}}
+
+/* GTK's window-control button gets special sizing and shape. */
+window headerbar windowcontrols button.close,
+window headerbar .windowcontrols button.close {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px;
+    margin: 0px;
+    border: none;
+    border-radius: 999px;
+    background-color: alpha({foreground}, 0.10);
+    box-shadow: none;
+}}
+window headerbar windowcontrols button.close:hover,
+window headerbar .windowcontrols button.close:hover {{
+    background-color: alpha({foreground}, 0.19);
+}}
+
+/* If the picker has a separate navigation toolbar under the titlebar,
+ * match its controls too, regardless of the root window class. */
+filechooser toolbar button,
+filechooser toolbar menubutton > button,
+filechooser .path-bar button,
+filechooser #pathbarbox button {{
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0px 4px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+}}
+
+filechooser toolbar,
+filechooser #pathbarbox,
+filechooser .path-bar,
+filechooser .path-bar-container {{
+    min-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    background-color: transparent;
+    background-image: none;
+    border: none;
+    box-shadow: none;
+}}

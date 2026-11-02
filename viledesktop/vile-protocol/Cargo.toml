@@ -1,0 +1,13 @@
+[package]
+name = "vile-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Shared config, paths, and JSON protocol for viledaemon and vilebar"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+unicode-segmentation.workspace = true
+unicode-width.workspace = true

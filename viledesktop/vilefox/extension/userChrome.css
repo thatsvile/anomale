@@ -1,0 +1,72 @@
+/* BEGIN VILEFOX */
+:root {
+  --tab-border-radius: __RADIUS_PX__px !important;
+  --toolbarbutton-border-radius: __RADIUS_PX__px !important;
+  --arrowpanel-border-radius: __RADIUS_PX__px !important;
+  --panel-border-radius: __RADIUS_PX__px !important;
+  --urlbar-icon-border-radius: __RADIUS_PX__px !important;
+  --menu-background-color: var(--arrowpanel-background, var(--lwt-accent-color)) !important;
+  --menu-color: var(--arrowpanel-color, var(--lwt-text-color)) !important;
+  --menuitem-hover-background-color: var(--button-hover-bgcolor, var(--lwt-tab-line-color)) !important;
+  --panel-background: var(--arrowpanel-background, var(--lwt-accent-color)) !important;
+  --panel-color: var(--arrowpanel-color, var(--lwt-text-color)) !important;
+  --panel-border-color: var(--arrowpanel-border-color, var(--toolbar-field-border-color)) !important;
+}
+#TabsToolbar,
+#tabbrowser-tabs {
+  padding-inline: __TAB_BAR_MARGIN_PX__px !important;
+}
+.tab-background,
+#urlbar,
+#urlbar-background,
+#urlbar-input-container,
+#urlbar[breakout][breakout-extend] > #urlbar-background,
+#searchbar,
+.urlbarView,
+menupopup,
+.menupopup-arrowscrollbox,
+panel[type="arrow"] {
+  border-radius: __RADIUS_PX__px !important;
+}
+menupopup,
+.menupopup-arrowscrollbox,
+panel {
+  appearance: none !important;
+  -moz-appearance: none !important;
+  background: var(--menu-background-color) !important;
+  color: var(--menu-color) !important;
+  border-color: var(--panel-border-color) !important;
+}
+menuitem,
+menu {
+  appearance: none !important;
+  -moz-appearance: none !important;
+  color: inherit !important;
+}
+menu[_moz-menuactive="true"],
+menuitem[_moz-menuactive="true"] {
+  background: var(--menuitem-hover-background-color) !important;
+  color: var(--toolbar-color, var(--lwt-text-color)) !important;
+}
+menuseparator {
+  appearance: none !important;
+  -moz-appearance: none !important;
+  height: 1px !important;
+  background: var(--panel-border-color, currentColor) !important;
+  opacity: 0.25;
+}
+.tab-background:is([selected], [multiselected]),
+.tabbrowser-tab:is([selected], [visuallyselected]) > .tab-stack > .tab-background {
+  outline-width: __OUTLINE_PX__px !important;
+  outline-offset: -__OUTLINE_PX__px !important;
+}
+.tab-line {
+  height: __LINE_PX__px !important;
+}
+#urlbar-background {
+  border-style: solid !important;
+  border-width: __URLBAR_BORDER_PX__px !important;
+}
+__COMPACT__
+__TAB_CLOSE__
+/* END VILEFOX */

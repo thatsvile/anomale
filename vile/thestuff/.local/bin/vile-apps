@@ -1,0 +1,277 @@
+#!/bin/bash
+# Update non-repo upstream apps for these dots.
+# Installed to ~/.local/bin by install.sh with the rest of the dots.
+set -euo pipefail
+
+CACHE_ROOT="${XDG_CACHE_HOME:-$HOME/.cache}/vile/src"
+VILE_REPO="https://github.com/thatsvile/anomale.git"
+VILEDESKTOP_GITPATH="viledesktop"
+WIFITUI_REPO="shazow/wifitui"
+
+usage() {
+    cat <<'EOF'
+Usage: vile-apps <command>
+
+Commands:
+  -update, --update, update   Check upstream apps and update if newer
+  -status, --status, status   Show installed vs upstream (no changes)
+  -h, --help, help            Show this help
+
+Tracks: viledesktop (this dots repo, viledesktop/ path), and wifitui
+(GitHub releases).
+
+vile binaries land in ~/.local/bin. Arch repo packages update with pacman.
+EOF
+}
+
+need_cmd() {
+    command -v "$1" >/dev/null 2>&1 || {
+        echo "ERROR: required command not found: $1" >&2
+        exit 1
+    }
+}
+
+ensure_tools() {
+    need_cmd curl
+    need_cmd git
+    need_cmd python3
+    need_cmd tar
+    need_cmd sudo
+}
+
+arch_name() {
+    case "$(uname -m)" in
+        x86_64) echo "x86_64" ;;
+        aarch64|arm64) echo "arm64" ;;
+        *)
+            echo "ERROR: Unsupported architecture: $(uname -m)" >&2
+            exit 1
+            ;;
+    esac
+}
+
+ensure_repo() {
+    local dir="$1" url="$2" branch="${3:-}"
+    mkdir -p "$(dirname "$dir")"
+    export GIT_CONFIG_COUNT=1
+    export GIT_CONFIG_KEY_0=advice.detachedHead
+    export GIT_CONFIG_VALUE_0=false
+    if [[ -d "$dir/.git" ]]; then
+        git -C "$dir" remote set-url origin "$url" >/dev/null
+        if [[ -n "$branch" ]]; then
+            git -C "$dir" fetch --quiet --depth 1 origin "$branch"
+            git -C "$dir" checkout -q -B "$branch" FETCH_HEAD
+        else
+            git -C "$dir" fetch --quiet --depth 1 origin HEAD
+            git -C "$dir" checkout -q -B vile-upstream FETCH_HEAD
+        fi
+        git -C "$dir" reset --quiet --hard FETCH_HEAD
+    else
+        rm -rf "$dir"
+        if [[ -n "$branch" ]]; then
+            git clone --quiet --depth 1 --branch "$branch" "$url" "$dir"
+        else
+            git clone --quiet --depth 1 "$url" "$dir"
+        fi
+    fi
+}
+
+print_row() {
+    printf '%-14s  %-14s  %-14s  %s\n' "$1" "$2" "$3" "$4"
+}
+
+status_note() {
+    local installed="$1" upstream="$2"
+    if [[ -z "$installed" || "$installed" == "-" ]]; then
+        echo "update available"
+    elif [[ "$installed" == "$upstream" ]]; then
+        echo "up to date"
+    else
+        echo "update available"
+    fi
+}
+
+vile_tree_hash() {
+    git -C "$1" rev-parse --short=12 "HEAD:${VILEDESKTOP_GITPATH}"
+}
+
+install_viledesktop_from() {
+    local root="$1"
+    if [[ ! -f "$root/Cargo.toml" ]]; then
+        echo "ERROR: viledesktop sources missing at $root" >&2
+        return 1
+    fi
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1091
+        source "$HOME/.cargo/env"
+    fi
+    need_cmd cargo
+    (
+        cd "$root"
+        cargo build --release --workspace
+    )
+    mkdir -p "$HOME/.local/bin"
+    local bin
+    for bin in vile viledaemon vilebar vilecolors vilewall vileshot vilefox; do
+        if [[ ! -x "$root/target/release/$bin" ]]; then
+            echo "ERROR: missing $root/target/release/$bin" >&2
+            return 1
+        fi
+        cp "$root/target/release/$bin" "$HOME/.local/bin/$bin"
+        chmod +x "$HOME/.local/bin/$bin"
+    done
+    if [[ -x "$HOME/.local/bin/vilefox" ]]; then
+        "$HOME/.local/bin/vilefox" install
+    fi
+}
+
+update_viledesktop() {
+    local src stamp remote_tree
+    src="$CACHE_ROOT/vile-dots"
+    stamp="$CACHE_ROOT/viledesktop.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    ensure_repo "$src" "$VILE_REPO"
+    remote_tree=$(vile_tree_hash "$src")
+
+    if [[ -x "$HOME/.local/bin/vile" && -f "$stamp" && "$(cat "$stamp")" == "$remote_tree" ]]; then
+        echo "viledesktop: already up to date (${remote_tree})."
+        return 1
+    fi
+
+    if [[ -f "$stamp" ]]; then
+        echo "viledesktop: $(cat "$stamp") -> ${remote_tree}"
+    else
+        echo "viledesktop: building ${remote_tree}..."
+    fi
+
+    install_viledesktop_from "$src/$VILEDESKTOP_GITPATH"
+    echo "$remote_tree" >"$stamp"
+    echo "viledesktop updated (${remote_tree})."
+    return 0
+}
+
+latest_wifitui_tag() {
+    curl -fsSL "https://api.github.com/repos/${WIFITUI_REPO}/releases/latest" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])"
+}
+
+installed_wifitui_tag() {
+    local stamp="$CACHE_ROOT/wifitui.installed"
+    if [[ -f "$stamp" ]]; then
+        cat "$stamp"
+        return 0
+    fi
+    echo ""
+}
+
+update_wifitui() {
+    local latest current tmp arch asset url tag_stripped stamp bin
+    stamp="$CACHE_ROOT/wifitui.installed"
+    mkdir -p "$CACHE_ROOT"
+
+    latest=$(latest_wifitui_tag)
+    current=$(installed_wifitui_tag)
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" && "$current" == "$latest" ]]; then
+        echo "wifitui: already up to date ($latest)."
+        return 1
+    fi
+
+    if command -v wifitui >/dev/null 2>&1 && [[ -n "$current" ]]; then
+        echo "wifitui: ${current} -> ${latest}"
+    else
+        echo "wifitui: installing ${latest}..."
+    fi
+
+    tmp=$(mktemp -d)
+    arch=$(arch_name)
+    tag_stripped="${latest#v}"
+    asset="wifitui-${tag_stripped}-linux-${arch}.tar.gz"
+    url="https://github.com/${WIFITUI_REPO}/releases/download/${latest}/${asset}"
+
+    curl -fsSL "$url" -o "$tmp/$asset"
+    tar -xzf "$tmp/$asset" -C "$tmp"
+    bin=$(find "$tmp" -type f -name wifitui -print -quit)
+    if [[ -z "$bin" ]]; then
+        echo "ERROR: wifitui binary missing from release archive." >&2
+        rm -rf "$tmp"
+        return 1
+    fi
+    sudo install -Dm755 "$bin" /usr/local/bin/wifitui
+    echo "$latest" >"$stamp"
+    rm -rf "$tmp"
+    echo "wifitui updated to ${latest}."
+    return 0
+}
+
+cmd_status() {
+    ensure_tools
+    mkdir -p "$CACHE_ROOT"
+
+    local cur lat vile_cur
+
+    printf '%-14s  %-14s  %-14s  %s\n' "APP" "INSTALLED" "UPSTREAM" "STATUS"
+    printf '%-14s  %-14s  %-14s  %s\n' "---" "---------" "--------" "------"
+
+    ensure_repo "$CACHE_ROOT/vile-dots" "$VILE_REPO"
+    lat=$(vile_tree_hash "$CACHE_ROOT/vile-dots")
+    vile_cur=$(cat "$CACHE_ROOT/viledesktop.installed" 2>/dev/null || true)
+    if [[ ! -x "$HOME/.local/bin/vile" ]]; then
+        print_row "viledesktop" "-" "$lat" "update available"
+    else
+        print_row "viledesktop" "${vile_cur:--}" "$lat" "$(status_note "${vile_cur:--}" "$lat")"
+    fi
+
+    cur=$(installed_wifitui_tag)
+    lat=$(latest_wifitui_tag)
+    if ! command -v wifitui >/dev/null 2>&1; then
+        print_row "wifitui" "-" "$lat" "update available"
+    else
+        print_row "wifitui" "${cur:--}" "$lat" "$(status_note "${cur:--}" "$lat")"
+    fi
+}
+
+cmd_update() {
+    ensure_tools
+    local updated=0
+
+    echo "==> Checking viledesktop..."
+    if update_viledesktop; then updated=1; fi
+
+    echo "==> Checking wifitui (GitHub releases)..."
+    if update_wifitui; then updated=1; fi
+
+    echo
+    if [[ "$updated" -eq 0 ]]; then
+        echo "Nothing needs to be updated."
+    else
+        echo "Done."
+    fi
+}
+
+main() {
+    if [[ $# -lt 1 ]]; then
+        usage
+        exit 1
+    fi
+
+    case "$1" in
+        -update|--update|update)
+            cmd_update
+            ;;
+        -status|--status|status)
+            cmd_status
+            ;;
+        -h|--help|help)
+            usage
+            ;;
+        *)
+            echo "Unknown command: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

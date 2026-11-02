@@ -1,0 +1,12 @@
+[package]
+name = "vilefox"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Native host and installer for the vilefox Firefox/LibreWolf theme"
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+vile-protocol.workspace = true

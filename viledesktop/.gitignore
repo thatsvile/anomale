@@ -1,0 +1,16 @@
+# Build
+/target/
+**/*.rs.bk
+
+# Editor / OS
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json

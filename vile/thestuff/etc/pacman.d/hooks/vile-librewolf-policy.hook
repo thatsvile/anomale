@@ -1,0 +1,11 @@
+[Trigger]
+Operation = Upgrade
+Operation = Install
+Type = Package
+Target = librewolf-bin
+Target = librewolf
+
+[Action]
+Description = Merging vile LibreWolf policies (block pywalfox)
+When = PostTransaction
+Exec = /usr/local/lib/vile/librewolf-policy.sh

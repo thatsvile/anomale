@@ -1,0 +1,18 @@
+[package]
+name = "viledaemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "User-session daemon that owns vilebar layout"
+
+[dependencies]
+anyhow.workspace = true
+calloop.workspace = true
+chrono.workspace = true
+env_logger.workspace = true
+log.workspace = true
+niri-ipc.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+vile-protocol.workspace = true
+zbus = { version = "5", default-features = true, features = ["async-io", "blocking-api"] }

@@ -1,0 +1,53 @@
+{
+  "schema": "vilecolor-recipe/v1",
+  "name": "default",
+  "extractor": "cut",
+  "sample": {
+    "max_edge": 640,
+    "sample_cap": 12000,
+    "alpha_threshold": 24,
+    "alpha_matte": "dark"
+  },
+  "cut": {
+    "bits": 5,
+    "boxes": 24,
+    "sat_bias": 1.0,
+    "pop_exponent": 0.75,
+    "separation": 9.0,
+    "vivid": 0.8
+  },
+  "hue": {
+    "h_bins": 24,
+    "s_bins": 4,
+    "v_bins": 4,
+    "vivid": 1.5,
+    "pop_exponent": 0.65,
+    "separation": 10.0
+  },
+  "kmeans": {
+    "k": 14,
+    "iterations": 12,
+    "vivid": 1.25,
+    "pop_exponent": 0.7,
+    "separation": 8.0,
+    "seed": 17
+  },
+  "map": {
+    "assignment": "ranked",
+    "theme": "dark",
+    "bg_source": "darkest",
+    "hue_snap": 70.0,
+    "bg_l": 0.15000000000000002,
+    "fg_l": 0.91,
+    "normal_l": 0.65,
+    "bright_l": 0.79,
+    "preserve_l": 20.0,
+    "chroma": 1.1,
+    "min_c": 0.035,
+    "bright_chroma": 1.05,
+    "neutral_c": 0.035,
+    "muted_l": 0.44,
+    "bg_chroma": 0.055,
+    "bright_floor": 0.08
+  }
+}

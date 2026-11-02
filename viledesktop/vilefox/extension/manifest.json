@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "vilefox",
+  "version": "0.1.1",
+  "description": "Theme Firefox and LibreWolf from vile colors",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "vilefox@vile",
+      "strict_min_version": "91.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "permissions": ["nativeMessaging", "theme"]
+}
