@@ -103,6 +103,8 @@ fn main() -> Result<()> {
         wanted_path: args.img.as_ref().map(|p| p.to_string_lossy().into_owned()),
         mode,
         decode_tx,
+        decode_inflight: false,
+        decoding_path: None,
     };
 
     if let Some(path) = app.wanted_path.clone() {
@@ -187,6 +189,9 @@ struct App {
     wanted_path: Option<String>,
     mode: WallpaperMode,
     decode_tx: channel::Sender<DecodeResult>,
+    /// True while a decode thread is outstanding for `decoding_path`.
+    decode_inflight: bool,
+    decoding_path: Option<String>,
 }
 
 struct WallSurface {
@@ -225,7 +230,12 @@ impl App {
             .max(1)
     }
 
-    fn request_decode(&self, path: String) {
+    fn request_decode(&mut self, path: String) {
+        if self.decode_inflight && self.decoding_path.as_deref() == Some(path.as_str()) {
+            return;
+        }
+        self.decode_inflight = true;
+        self.decoding_path = Some(path.clone());
         let tx = self.decode_tx.clone();
         let target = self.decode_target_edge();
         thread::spawn(move || {
@@ -243,7 +253,16 @@ impl App {
     }
 
     fn on_decoded(&mut self, result: DecodeResult) {
+        let finished_inflight = self.decoding_path.as_deref() == Some(result.path.as_str());
+        if finished_inflight {
+            self.decode_inflight = false;
+            self.decoding_path = None;
+        }
         if self.wanted_path.as_deref() != Some(result.path.as_str()) {
+            // A newer path was requested while this decode ran.
+            if let Some(path) = self.wanted_path.clone() {
+                self.request_decode(path);
+            }
             return;
         }
         match result.image {
@@ -257,8 +276,19 @@ impl App {
                 );
                 self.image = Some(image);
                 self.draw_all();
+                // SHM buffers stay attached for display; drop the CPU raster copy.
+                self.image = None;
             }
             Err(err) => warn!("decode {}: {err}", result.path),
+        }
+    }
+
+    fn ensure_decoded(&mut self) {
+        if self.image.is_some() {
+            return;
+        }
+        if let Some(path) = self.wanted_path.clone() {
+            self.request_decode(path);
         }
     }
 
@@ -360,6 +390,10 @@ impl App {
     }
 
     fn draw_all(&mut self) {
+        if self.image.is_none() {
+            self.ensure_decoded();
+            return;
+        }
         let ids: Vec<u64> = self.surfaces.iter().map(|s| s.id).collect();
         for id in ids {
             self.draw_id(id);
@@ -367,6 +401,10 @@ impl App {
     }
 
     fn draw_id(&mut self, id: u64) {
+        if self.image.is_none() {
+            self.ensure_decoded();
+            return;
+        }
         let Some(index) = self.surfaces.iter().position(|s| s.id == id) else {
             return;
         };
