@@ -382,6 +382,22 @@ cfg["colors_apply_commands"] = cfg.pop("_install_saved_colors_apply_commands", [
 ])
 p.write_text(json.dumps(cfg, indent=2) + "\n")
 PY
+# Persist wallpaper state so first-boot vile --refresh / vilewall restores an image.
+SEED_WALL="$SEED_WALL" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+home = Path.home()
+cfg = json.loads((home / ".config/vile/config.json").read_text())
+mode = cfg.get("wallpaper", {}).get("mode", "fill")
+img = Path(os.environ["SEED_WALL"]).expanduser().resolve()
+if not img.is_file():
+    raise SystemExit(f"seed wallpaper missing: {img}")
+path = home / ".cache" / "vile" / "wallpaper.json"
+path.parent.mkdir(parents=True, exist_ok=True)
+path.write_text(json.dumps({"image": str(img), "mode": mode}, indent=2) + "\n")
+print(f"Seeded wallpaper state from {img.name} (mode={mode})")
+PY
 "$HOME/.local/bin/vilefox" install
 
 # Seed Papirus folder colors now that wal cache exists (skipped during colors seed).
