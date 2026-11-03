@@ -92,7 +92,10 @@ Useful terminal popups bound in the same file: wifi (`wifitui`), `pulsemixer`.
 - Wallpapers live in `~/Pictures/wallpaper/`. Applying colors through
   `vile --colors` refreshes terminal, GTK, niri, SDDM, and LibreWolf (vilefox).
   Post-apply shell commands live in `~/.config/vile/config.json` under
-  `colors_apply_commands` (niri reload + `vile-refresh.sh` by default).
+  `colors_apply_commands` (fallback) and optional
+  `colors_apply_commands_dark` / `colors_apply_commands_light` selected from
+  colorlab Theme base (niri reload + `vile-refresh.sh` with prefer-dark/light
+  by default).
   SDDM sync goes through a polkit helper (`/usr/local/lib/vile/sddm-sync.sh`);
   the theme directory stays root-owned and is not user-writable.
 - **niri:** `~/.config/niri/`

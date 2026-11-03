@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::map::Palette;
+use crate::recipe::Theme;
 use crate::template::{collect_templates, render};
 use vile_protocol::{color_cache_dir, expand_home_path, load_config, wal_compat_dir};
 
@@ -16,21 +17,31 @@ pub fn export_palette(palette: &Palette) -> Result<()> {
     if let Ok(seq) = fs::read(cache.join("sequences")) {
         apply_sequences(&seq);
     }
-    run_colors_apply_commands();
+    run_colors_apply_commands(palette.theme);
     Ok(())
 }
 
-/// Run `config.colors_apply_commands` after a successful colors export. Failures are logged only.
+fn theme_label(theme: Theme) -> &'static str {
+    match theme {
+        Theme::Dark => "dark",
+        Theme::Light => "light",
+    }
+}
+
+/// Run theme-resolved `colors_apply_commands*` after a successful colors export.
+/// Failures are logged only.
 ///
 /// Child stdout/stderr are discarded so chatty hooks (e.g. papirus-folders via
 /// vile-refresh) cannot corrupt an in-process colorlab / ratatui alternate screen.
 /// Commands are spawned in the background so colorlab is not blocked on
 /// `vile-refresh.sh` sleeps / papirus-folders / pkexec.
-fn run_colors_apply_commands() {
+/// Each child gets `VILE_THEME=dark|light` from the applied palette Theme base.
+fn run_colors_apply_commands(theme: Theme) {
     let Ok(cfg) = load_config() else {
         return;
     };
-    for raw in &cfg.colors_apply_commands {
+    let theme_str = theme_label(theme);
+    for raw in cfg.colors_apply_commands_for(theme_str) {
         let cmd = raw.trim();
         if cmd.is_empty() {
             continue;
@@ -39,6 +50,7 @@ fn run_colors_apply_commands() {
         match Command::new("sh")
             .arg("-c")
             .arg(&expanded)
+            .env("VILE_THEME", theme_str)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null())

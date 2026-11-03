@@ -38,6 +38,14 @@
     "niri msg action load-config-file",
     "~/.local/bin/vile-refresh.sh"
   ],
+  "colors_apply_commands_dark": [
+    "niri msg action load-config-file",
+    "~/.local/bin/vile-refresh.sh dark"
+  ],
+  "colors_apply_commands_light": [
+    "niri msg action load-config-file",
+    "~/.local/bin/vile-refresh.sh light"
+  ],
   "bars": [
     {
       "name": "main",

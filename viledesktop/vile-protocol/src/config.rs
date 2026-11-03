@@ -28,8 +28,31 @@ pub struct Config {
     pub menu: MenuConfig,
     /// Shell commands run after every successful colors apply (`export_palette`).
     /// Not run for wallpaper-only or `vile --refresh`. Each entry is `sh -c`.
+    /// Used when the theme-specific list for the applied palette is empty.
     #[serde(default)]
     pub colors_apply_commands: Vec<String>,
+    /// When non-empty, used instead of `colors_apply_commands` for dark Theme base.
+    #[serde(default)]
+    pub colors_apply_commands_dark: Vec<String>,
+    /// When non-empty, used instead of `colors_apply_commands` for light Theme base.
+    #[serde(default)]
+    pub colors_apply_commands_light: Vec<String>,
+}
+
+impl Config {
+    /// Theme-specific apply commands if non-empty, else `colors_apply_commands`.
+    /// `theme` is `"dark"` or `"light"` (colorlab Theme base / `vile.theme`).
+    pub fn colors_apply_commands_for(&self, theme: &str) -> &[String] {
+        let specific = match theme {
+            "light" => &self.colors_apply_commands_light,
+            _ => &self.colors_apply_commands_dark,
+        };
+        if !specific.is_empty() {
+            specific
+        } else {
+            &self.colors_apply_commands
+        }
+    }
 }
 
 fn default_mode_timeout_ms() -> u64 {
@@ -53,6 +76,8 @@ impl Default for Config {
             tray: TrayConfig::default(),
             menu: MenuConfig::default(),
             colors_apply_commands: Vec::new(),
+            colors_apply_commands_dark: Vec::new(),
+            colors_apply_commands_light: Vec::new(),
         }
     }
 }
@@ -937,6 +962,32 @@ mod tests {
                 "~/.local/bin/vile-refresh.sh".to_string(),
             ]
         );
+        assert!(cfg.colors_apply_commands_dark.is_empty());
+        assert!(cfg.colors_apply_commands_light.is_empty());
+        assert_eq!(
+            cfg.colors_apply_commands_for("dark"),
+            cfg.colors_apply_commands.as_slice()
+        );
+        assert_eq!(
+            cfg.colors_apply_commands_for("light"),
+            cfg.colors_apply_commands.as_slice()
+        );
+    }
+
+    #[test]
+    fn colors_apply_commands_theme_specific() {
+        let cfg: super::Config = serde_json::from_str(
+            r#"{
+              "colors_apply_commands":["fallback"],
+              "colors_apply_commands_dark":["dark-hook"],
+              "colors_apply_commands_light":["light-hook"],
+              "bars":[{"name":"main"}]
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.colors_apply_commands_for("dark"), &["dark-hook".to_string()]);
+        assert_eq!(cfg.colors_apply_commands_for("light"), &["light-hook".to_string()]);
+        assert_eq!(cfg.colors_apply_commands_for("other"), &["dark-hook".to_string()]);
     }
 
     #[test]

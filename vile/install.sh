@@ -360,14 +360,18 @@ if [[ ! -f "$HOME/.config/vile/colors/palettes/default.json" ]]; then
     exit 1
 fi
 echo "Applying initial vilecolors palette from $(basename "$SEED_WALL")..."
-# Skip colors_apply_commands during seed (niri/wal-refresh are not useful mid-install).
+# Skip colors_apply_commands* during seed (niri/wal-refresh are not useful mid-install).
 python3 - <<'PY'
 import json
 from pathlib import Path
 p = Path.home() / ".config/vile/config.json"
 cfg = json.loads(p.read_text())
 cfg["_install_saved_colors_apply_commands"] = cfg.get("colors_apply_commands", [])
+cfg["_install_saved_colors_apply_commands_dark"] = cfg.get("colors_apply_commands_dark", [])
+cfg["_install_saved_colors_apply_commands_light"] = cfg.get("colors_apply_commands_light", [])
 cfg["colors_apply_commands"] = []
+cfg["colors_apply_commands_dark"] = []
+cfg["colors_apply_commands_light"] = []
 p.write_text(json.dumps(cfg, indent=2) + "\n")
 PY
 "$HOME/.local/bin/vilecolors" --recipe default --img "$SEED_WALL"
@@ -379,6 +383,14 @@ cfg = json.loads(p.read_text())
 cfg["colors_apply_commands"] = cfg.pop("_install_saved_colors_apply_commands", [
     "niri msg action load-config-file",
     "~/.local/bin/vile-refresh.sh",
+])
+cfg["colors_apply_commands_dark"] = cfg.pop("_install_saved_colors_apply_commands_dark", [
+    "niri msg action load-config-file",
+    "~/.local/bin/vile-refresh.sh dark",
+])
+cfg["colors_apply_commands_light"] = cfg.pop("_install_saved_colors_apply_commands_light", [
+    "niri msg action load-config-file",
+    "~/.local/bin/vile-refresh.sh light",
 ])
 p.write_text(json.dumps(cfg, indent=2) + "\n")
 PY
