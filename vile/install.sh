@@ -380,17 +380,21 @@ import json
 from pathlib import Path
 p = Path.home() / ".config/vile/config.json"
 cfg = json.loads(p.read_text())
+_vesktop_cp = "cp ~/.cache/wal/vesktop-clienttheme.css ~/.var/app/dev.vencord.Vesktop/config/vesktop/settings/quickCss.css"
 cfg["colors_apply_commands"] = cfg.pop("_install_saved_colors_apply_commands", [
     "niri msg action load-config-file",
     "~/.local/bin/vile-refresh.sh",
+    _vesktop_cp,
 ])
 cfg["colors_apply_commands_dark"] = cfg.pop("_install_saved_colors_apply_commands_dark", [
     "niri msg action load-config-file",
     "~/.local/bin/vile-refresh.sh dark",
+    _vesktop_cp,
 ])
 cfg["colors_apply_commands_light"] = cfg.pop("_install_saved_colors_apply_commands_light", [
     "niri msg action load-config-file",
     "~/.local/bin/vile-refresh.sh light",
+    _vesktop_cp,
 ])
 p.write_text(json.dumps(cfg, indent=2) + "\n")
 PY

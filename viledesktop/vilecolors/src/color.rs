@@ -150,6 +150,34 @@ pub fn rgb_hsv(r: f64, g: f64, b: f64) -> [f64; 3] {
     [h, s, max]
 }
 
+/// Standard HSL: H in degrees `[0, 360)`, S/L in `[0, 1]`.
+pub fn rgb_hsl(r: f64, g: f64, b: f64) -> [f64; 3] {
+    let r = r / 255.0;
+    let g = g / 255.0;
+    let b = b / 255.0;
+    let max = r.max(g).max(b);
+    let min = r.min(g).min(b);
+    let l = (max + min) / 2.0;
+    let d = max - min;
+    if d == 0.0 {
+        return [0.0, 0.0, l];
+    }
+    let s = if l > 0.5 {
+        d / (2.0 - max - min)
+    } else {
+        d / (max + min)
+    };
+    let mut h = if max == r {
+        ((g - b) / d) % 6.0
+    } else if max == g {
+        (b - r) / d + 2.0
+    } else {
+        (r - g) / d + 4.0
+    };
+    h = (h * 60.0 + 360.0) % 360.0;
+    [h, s, l]
+}
+
 pub fn color_point(rgb: [f64; 3]) -> Candidate {
     let lab = rgb_lab(rgb[0], rgb[1], rgb[2]);
     Candidate {
@@ -263,6 +291,27 @@ mod tests {
         assert!(hsv[0].abs() < 1e-9 || (hsv[0] - 360.0).abs() < 1e-9);
         assert!((hsv[1] - 1.0).abs() < 1e-9);
         assert!((hsv[2] - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn hsl_primary_red() {
+        let hsl = rgb_hsl(255.0, 0.0, 0.0);
+        assert!(hsl[0].abs() < 1e-9 || (hsl[0] - 360.0).abs() < 1e-9);
+        assert!((hsl[1] - 1.0).abs() < 1e-9);
+        assert!((hsl[2] - 0.5).abs() < 1e-9);
+    }
+
+    #[test]
+    fn hsl_gray_and_green() {
+        let gray = rgb_hsl(128.0, 128.0, 128.0);
+        assert!((gray[0]).abs() < 1e-9);
+        assert!((gray[1]).abs() < 1e-9);
+        assert!((gray[2] - 128.0 / 255.0).abs() < 1e-9);
+
+        let green = rgb_hsl(0.0, 255.0, 0.0);
+        assert!((green[0] - 120.0).abs() < 1e-9);
+        assert!((green[1] - 1.0).abs() < 1e-9);
+        assert!((green[2] - 0.5).abs() < 1e-9);
     }
 
     #[test]

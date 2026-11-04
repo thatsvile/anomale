@@ -101,6 +101,11 @@ Useful terminal popups bound in the same file: wifi (`wifitui`), `pulsemixer`.
 - **niri:** `~/.config/niri/`
 - **vile:** `~/.config/vile/` (`config.json`, recipes, templates, vilefox.json)
 - **templates:** `~/.config/wal/templates/` and `~/.config/vile/colors/templates/`
+- **Vesktop:** `vesktop-clienttheme.css` is written to `~/.cache/wal/` on colors
+  apply (`{vesktop.h/s/l}` from palette `background` hue/sat, with Theme-base S/L
+  bands so dark stays near-black and light stays bright), then copied into Flatpak QuickCSS
+  (`~/.var/app/dev.vencord.Vesktop/config/vesktop/settings/quickCss.css`) via
+  `colors_apply_commands` (Chromium blocks `file://` `@import`).
 
 LibreWolf auto-installs the signed vilefox add-on via policies
 (`normal_installed` from `/usr/local/share/vile/vilefox-signed.xpi`). Firefox

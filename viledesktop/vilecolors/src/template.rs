@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::color::rgb_hsl;
 use crate::map::Palette;
 use vile_protocol::{templates_dir, wal_templates_dir};
 
@@ -27,6 +28,16 @@ impl Color {
         [parse(0), parse(2), parse(4)]
     }
 
+    fn hsl_parts(&self) -> (i32, i32, i32) {
+        let [r, g, b] = self.rgb();
+        let [h, s, l] = rgb_hsl(f64::from(r), f64::from(g), f64::from(b));
+        (
+            h.round().clamp(0.0, 360.0) as i32 % 360,
+            (s * 100.0).round().clamp(0.0, 100.0) as i32,
+            (l * 100.0).round().clamp(0.0, 100.0) as i32,
+        )
+    }
+
     fn apply(&self, mods: &[&str], alpha: &str) -> Result<String> {
         if mods.is_empty() {
             return Ok(self.hex.clone());
@@ -44,6 +55,13 @@ impl Color {
             ["red"] => Ok(r.to_string()),
             ["green"] => Ok(g.to_string()),
             ["blue"] => Ok(b.to_string()),
+            ["hsl"] => {
+                let (h, s, l) = self.hsl_parts();
+                Ok(format!("{h}, {s}%, {l}%"))
+            }
+            ["hsl", "h"] => Ok(self.hsl_parts().0.to_string()),
+            ["hsl", "s"] => Ok(self.hsl_parts().1.to_string()),
+            ["hsl", "l"] => Ok(self.hsl_parts().2.to_string()),
             _ => bail!("unknown template modifier .{}", mods.join(".")),
         }
     }
@@ -97,6 +115,18 @@ fn subst(
     Ok(out)
 }
 
+/// Vesktop clientTheme HSL from palette `background`, adjusted for Theme base.
+/// Hue/sat follow the background; L is forced into a dark (near-black) or light
+/// band so Discord does not flip to the wrong overall mode.
+fn vesktop_hsl(background: &Color, theme: crate::recipe::Theme) -> (i32, i32, i32) {
+    let (h, s, _) = background.hsl_parts();
+    match theme {
+        // Dark L ~16 keeps clientTheme near-black without crushing chrome to pure black.
+        crate::recipe::Theme::Dark => (h, s.clamp(12, 36), 16),
+        crate::recipe::Theme::Light => (h, s.clamp(10, 28), 72),
+    }
+}
+
 fn replace_var(
     inner: &str,
     palette: &Palette,
@@ -116,6 +146,20 @@ fn replace_var(
         return Ok(match palette.theme {
             crate::recipe::Theme::Dark => "dark".into(),
             crate::recipe::Theme::Light => "light".into(),
+        });
+    }
+    if name == "vesktop" {
+        let background = named
+            .get("background")
+            .cloned()
+            .unwrap_or_else(|| Color::from_hex("#000000"));
+        let (h, s, l) = vesktop_hsl(&background, palette.theme);
+        return Ok(match mods.as_slice() {
+            [] | ["hsl"] => format!("{h}, {s}%, {l}%"),
+            ["h"] | ["hsl", "h"] => h.to_string(),
+            ["s"] | ["hsl", "s"] => s.to_string(),
+            ["l"] | ["hsl", "l"] => l.to_string(),
+            _ => format!("{{{inner}}}"),
         });
     }
     let color = if let Some(rest) = name.strip_prefix("color") {
@@ -317,6 +361,49 @@ mod tests {
         )
         .unwrap();
         assert_eq!(out, "bg #112233 strip 112233 brace {ok} rgb 170,187,204");
+    }
+
+    #[test]
+    fn substitutes_hsl_for_clienttheme() {
+        // #00FF00 → h=120, s=100%, l=50%
+        let mut p = pal();
+        p.colors[4] = "#00FF00".into();
+        let out = render(
+            ":root {{\n    --theme-h: {color4.hsl.h};\n    --theme-s: {color4.hsl.s}%;\n    --theme-l: {color4.hsl.l}%;\n}}\n{color4.hsl}",
+            &p,
+        )
+        .unwrap();
+        assert_eq!(
+            out,
+            ":root {\n    --theme-h: 120;\n    --theme-s: 100%;\n    --theme-l: 50%;\n}\n120, 100%, 50%"
+        );
+    }
+
+    #[test]
+    fn vesktop_hsl_dark_is_near_black() {
+        let mut p = pal();
+        p.theme = crate::recipe::Theme::Dark;
+        // Bright green background → hue kept, S clamped, L forced low.
+        p.background = "#00FF00".into();
+        let out = render(
+            "--theme-h: {vesktop.h}; --theme-s: {vesktop.s}%; --theme-l: {vesktop.l}%;",
+            &p,
+        )
+        .unwrap();
+        assert_eq!(out, "--theme-h: 120; --theme-s: 36%; --theme-l: 16%;");
+    }
+
+    #[test]
+    fn vesktop_hsl_light_is_bright() {
+        let mut p = pal();
+        p.theme = crate::recipe::Theme::Light;
+        p.background = "#00FF00".into();
+        let out = render(
+            "--theme-h: {vesktop.h}; --theme-s: {vesktop.s}%; --theme-l: {vesktop.l}%;",
+            &p,
+        )
+        .unwrap();
+        assert_eq!(out, "--theme-h: 120; --theme-s: 28%; --theme-l: 72%;");
     }
 
     #[test]

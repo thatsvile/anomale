@@ -36,15 +36,18 @@
   },
   "colors_apply_commands": [
     "niri msg action load-config-file",
-    "~/.local/bin/vile-refresh.sh"
+    "~/.local/bin/vile-refresh.sh",
+    "cp ~/.cache/wal/vesktop-clienttheme.css ~/.var/app/dev.vencord.Vesktop/config/vesktop/settings/quickCss.css"
   ],
   "colors_apply_commands_dark": [
     "niri msg action load-config-file",
-    "~/.local/bin/vile-refresh.sh dark"
+    "~/.local/bin/vile-refresh.sh dark",
+    "cp ~/.cache/wal/vesktop-clienttheme.css ~/.var/app/dev.vencord.Vesktop/config/vesktop/settings/quickCss.css"
   ],
   "colors_apply_commands_light": [
     "niri msg action load-config-file",
-    "~/.local/bin/vile-refresh.sh light"
+    "~/.local/bin/vile-refresh.sh light",
+    "cp ~/.cache/wal/vesktop-clienttheme.css ~/.var/app/dev.vencord.Vesktop/config/vesktop/settings/quickCss.css"
   ],
   "bars": [
     {
